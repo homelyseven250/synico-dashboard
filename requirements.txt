@@ -1,0 +1,5 @@
+flask
+authlib
+flask_login
+flask_socketio
+requests

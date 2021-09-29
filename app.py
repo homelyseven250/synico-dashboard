@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, render_template, redirect, url_for
 from authlib.integrations.flask_client import OAuth
 import json
-import gunicorn
+# import gunicorn
 import requests
 import flask_login
 import flask_socketio
@@ -64,18 +64,27 @@ def auth():
     storagePath = os.path.join('data', str(id))
     print(storagePath)
     if os.path.exists(storagePath):
-        pass
+        userStorage = json.loads(
+        open(os.path.join('data', id, 'user.json')).read())
+        userStorage['username'] = username
+        userStorage['email'] = email
+        userStorage['id'] = id
+        userStorage['discord'] = True
+        userStorage['discord_token'] = token
+        with open(os.path.join('data', id, 'user.json'), 'w') as outfile:
+            json.dump(userStorage, outfile)
     else:
         os.makedirs(os.path.join('data', id))
-    userStorage = json.loads(
-        open(os.path.join('data', id, 'user.json')).read())
-    userStorage['username'] = username
-    userStorage['email'] = email
-    userStorage['id'] = id
-    userStorage['discord'] = True
-    userStorage['discord_token'] = token
-    with open(os.path.join('data', id, 'user.json'), 'w') as outfile:
-        json.dump(userStorage, outfile)
+        userStorage = {}
+        userStorage['username'] = username
+        userStorage['email'] = email
+        userStorage['id'] = id
+        userStorage['discord'] = True
+        userStorage['discord_token'] = token
+        userStorage ['guilds'] = []
+        with open(os.path.join('data', id, 'user.json'), 'w') as outfile:
+            json.dump(userStorage, outfile)
+    
     flask_login.login_user(user)
     return redirect(url_for('dashboard'))
 
@@ -96,7 +105,7 @@ def dashboard():
     else:
         client = requests.session()
         client.headers.update(
-            {'Authorization': 'Bearer ' + user["token"]["access_token"]})
+            {'Authorization': 'Bearer ' + user["discord_token"]["access_token"]})
         guilds = json.loads(client.get(
             app.config['DISCORD_API_BASE_URL'] + 'users/@me/guilds').text)
         ownedGuilds = []
@@ -127,19 +136,25 @@ def guild(guild_id):
     return render_template('guild.html', guild=guild, user=user, username=user["username"])
 
 
+@app.route('/refreshGuilds')
+@flask_login.login_required
+def refreshGuilds():
+    socket.emit('guildCheck', {'uid': flask_login.current_user.get_id()})
+    return "OK"
+
 @ socket.on('guildCheckReply')
 def guildCheckReply(data):
-    if data['response']:
-        # Open owner's json
-        with open(os.path.join('data', data['owner'], 'user.json')) as userFile:
-            userFile = json.load(userFile)
-            if 'guilds' in userFile:
-                userFile['guilds'][data['guildID']] = {'invited': True}
-            else:
-                userFile['guilds'] = {}
-                userFile['guilds'][data['guildID']] = {'invited': True}
-            json.dump(userFile, open(os.path.join(
-                'data', data['owner'], 'user.json'), 'w'))
+    for guild in data['cache']:
+        userFile = open(os.path.join('data', data['uid'], 'user.json'), 'r')
+        user = json.loads(userFile.read())
+        userFile.close()
+        if guild['id'] in user['guilds']:
+            pass
+        elif guild['ownerId'] == data['uid']:
+            user['guilds'].append(guild['id'])
+            userFile = open(os.path.join('data', data['uid'], 'user.json'), 'w')
+            userFile.write(json.dumps(user))
+            userFile.close()
 
 
-# socket.run(app)
+socket.run(app)
