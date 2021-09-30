@@ -1,3 +1,5 @@
+#   Copyright (c) 2021 George Keylock
+#   All rights reserved.
 from flask import Flask, jsonify, render_template, redirect, url_for
 from authlib.integrations.flask_client import OAuth
 import json
@@ -6,6 +8,7 @@ import requests
 import flask_login
 import flask_socketio
 import os
+
 
 app = Flask(__name__)
 
@@ -43,6 +46,24 @@ discord = oauth.register(
 class User(flask_login.UserMixin):
     pass
 
+
+def getInviteURL(guild_id):
+    return f'https://discord.com/oauth2/authorize?client_id=887734783139012629&scope=bot%20applications.commands&permissions=7784103761&guild_id={guild_id}&disable_guild_select=true'
+
+def checkGuild(id):
+    inGuilds = getBotGuilds()
+    for guild in inGuilds:
+        if guild['id'] == id:
+            return True
+    return False
+
+def getBotGuilds():
+    client = requests.session()
+    client.headers.update(
+        {'Authorization': 'Bot ' + app.config['DISCORD_BOT_TOKEN']})
+    guilds = json.loads(client.get(
+        app.config['DISCORD_API_BASE_URL'] + 'users/@me/guilds').text)
+    return guilds
 
 @app.route('/login/discord')
 def login():
@@ -113,7 +134,7 @@ def dashboard():
             if guild['owner'] == True:
                 ownedGuilds.append(guild)
         json.dump(ownedGuilds, open('data/'+user["id"]+'/guilds.json', 'w'))
-    return render_template('dashboard.html', username=user["username"], guilds=ownedGuilds, user=user)
+    return render_template('dashboard.html', username=user["username"], guilds=ownedGuilds, user=user, botGuilds=getBotGuilds())
 
 
 @app.route('/logout')
@@ -125,36 +146,21 @@ def logout():
 @app.route('/dashboard/guild/<guild_id>')
 @flask_login.login_required
 def guild(guild_id):
-    user = json.loads(open(os.path.join(
-        'data', flask_login.current_user.get_id(), 'user.json')).read())
-    if not os.path.exists(os.path.join('data', guild_id, 'guild.json')):
-        os.makedirs(os.path.join('data', guild_id))
-        guild = open(os.path.join('data', guild_id, 'guild.json'), 'w')
-        guild.write(json.dumps({'guild_id': guild_id}))
-        guild.close()
-    guild = json.loads(open(os.path.join('data', guild_id, 'guild.json')).read())
-    return render_template('guild.html', guild=guild, user=user, username=user["username"])
+    if checkGuild(guild_id):
+        user = json.loads(open(os.path.join(
+            'data', flask_login.current_user.get_id(), 'user.json')).read())
+        if not os.path.exists(os.path.join('data', guild_id, 'guild.json')):
+            os.makedirs(os.path.join('data', guild_id))
+            guild = open(os.path.join('data', guild_id, 'guild.json'), 'w')
+            guild.write(json.dumps({'guild_id': guild_id}))
+            guild.close()
+        guild = json.loads(open(os.path.join('data', guild_id, 'guild.json')).read())
+        return render_template('guild.html', guild=guild, user=user, username=user["username"])
+    else:
+        return redirect(getInviteURL(guild_id))
 
 
-@app.route('/refreshGuilds')
-@flask_login.login_required
-def refreshGuilds():
-    socket.emit('guildCheck', {'uid': flask_login.current_user.get_id()})
-    return "OK"
 
-@ socket.on('guildCheckReply')
-def guildCheckReply(data):
-    for guild in data['cache']:
-        userFile = open(os.path.join('data', data['uid'], 'user.json'), 'r')
-        user = json.loads(userFile.read())
-        userFile.close()
-        if guild['id'] in user['guilds']:
-            pass
-        elif guild['ownerId'] == data['uid']:
-            user['guilds'].append(guild['id'])
-            userFile = open(os.path.join('data', data['uid'], 'user.json'), 'w')
-            userFile.write(json.dumps(user))
-            userFile.close()
 
 
 socket.run(app)

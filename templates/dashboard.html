@@ -47,7 +47,7 @@
         </div>
     </nav>
     <div class="container">
-        <button id="refreshGuildsBtn" style="margin-bottom: 16px;"type="button" class="btn btn-primary">Refresh Servers <i class="bi bi-arrow-repeat"></i></button>
+        <!-- <button id="refreshGuildsBtn" style="margin-bottom: 16px;"type="button" class="btn btn-primary">Refresh Servers <i class="bi bi-arrow-repeat"></i></button> -->
         <br>
         {% for item in guilds %}
         <div class="card mb-3" style="max-width: 540px;">
@@ -59,15 +59,9 @@
                                 <h5 class="card-title">{{ item.name }}</h5>
                             </div>
                             <div class="col-md-6">
-                                {% if not item.id in user.guilds %}
-                                <a class="btn btn-primary"
-                                    href="https://discord.com/oauth2/authorize?client_id=887734783139012629&scope=bot%20applications.commands&permissions=7784103761&guild_id={{ item.id }}&disable_guild_select=true"
-                                    role="button">Invite now</a>
-                                {% else %}
                                 <a class="btn btn-primary"
                                     href="/dashboard/guild/{{ item.id }}"
                                     role="button">Dashboard</a>
-                                {% endif %}
 
                             </div>
                         </div>

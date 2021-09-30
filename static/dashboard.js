@@ -1,3 +1,7 @@
+/*
+ *   Copyright (c) 2021 George Keylock
+ *   All rights reserved.
+ */
 refreshGuildsBtn = document.getElementById("refreshGuildsBtn");
 refreshGuildsBtn.addEventListener("click", function () {
     // xhr request to refresh guilds
