@@ -1,6 +1,6 @@
 #   Copyright (c) 2021 George Keylock
 #   All rights reserved.
-from flask import Flask, jsonify, render_template, redirect, url_for
+from flask import Flask, jsonify, render_template, redirect, url_for, request
 from authlib.integrations.flask_client import OAuth
 import json
 # import gunicorn
@@ -65,6 +65,22 @@ def getBotGuilds():
         app.config['DISCORD_API_BASE_URL'] + 'users/@me/guilds').text)
     return guilds
 
+def getChannels(guild_id):
+    client = requests.session()
+    client.headers.update(
+        {'Authorization': 'Bot ' + app.config['DISCORD_BOT_TOKEN']})
+    channels = json.loads(client.get(
+        app.config['DISCORD_API_BASE_URL'] + f'guilds/{guild_id}/channels').text)
+    return channels
+
+def getChannel(channel_id):
+    client = requests.session()
+    client.headers.update(
+        {'Authorization': 'Bot ' + app.config['DISCORD_BOT_TOKEN']})
+    channel = json.loads(client.get(
+        app.config['DISCORD_API_BASE_URL'] + f'channels/{channel_id}').text)
+    return channel
+
 @app.route('/login/discord')
 def login():
     return discord.authorize_redirect()
@@ -112,6 +128,8 @@ def auth():
 
 @app.route('/')
 def index():
+    if flask_login.current_user.is_authenticated:
+        return redirect(url_for('dashboard'))
     return render_template('index.html')
 
 
@@ -155,12 +173,45 @@ def guild(guild_id):
             guild.write(json.dumps({'guild_id': guild_id}))
             guild.close()
         guild = json.loads(open(os.path.join('data', guild_id, 'guild.json')).read())
-        return render_template('guild.html', guild=guild, user=user, username=user["username"])
+        return render_template('guild.html', guild=guild, user=user, username=user["username"], guild_id=guild_id)
     else:
         return redirect(getInviteURL(guild_id))
 
+@app.route('/dashboard/guild/<guild_id>/channels/<channel_id>/msg')
+@flask_login.login_required
+def guild_msg(guild_id, channel_id):
+    msg = request.args.get('message')
+    user = json.loads(open(os.path.join(
+        'data', flask_login.current_user.get_id(), 'user.json')).read())
+    if guild_id in user['guilds']:
+        socket.emit('msg', {'message': msg, 'channel_id': channel_id, 'guild_id': guild_id})
+    return jsonify({'status': 'success', 'handover': True})
 
+@app.route('/dashboard/guild/<guild_id>/channels')
+@flask_login.login_required
+def guild_channels(guild_id):
+    user = json.loads(open(os.path.join(
+        'data', flask_login.current_user.get_id(), 'user.json')).read())
+    if guild_id in user['guilds']:
+        channels = getChannels(guild_id)
+        textChannels = []
+        for channel in channels:
+            if channel['type'] == 0 or channel['type'] == 5:
+                textChannels.append(channel)
+        return render_template('channels.html', channels=textChannels, guild_id=guild_id)
+       
+    else:
+        return redirect(getInviteURL(guild_id))
 
+@app.route('/dashboard/guild/<guild_id>/channels/<channel_id>')
+@flask_login.login_required
+def guild_channel(guild_id, channel_id):
+    user = json.loads(open(os.path.join(
+        'data', flask_login.current_user.get_id(), 'user.json')).read())
+    if guild_id in user['guilds']:
+        channel = getChannel(channel_id)
+        return render_template('channel.html', channel=channel, guild_id=guild_id)
+    else:
+        return redirect(getInviteURL(guild_id))
 
-
-socket.run(app)
+# socket.run(app)
