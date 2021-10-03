@@ -48,7 +48,8 @@ class User(flask_login.UserMixin):
 
 
 def getInviteURL(guild_id):
-    return f'https://discord.com/oauth2/authorize?client_id=887734783139012629&scope=bot%20applications.commands&permissions=7784103761&guild_id={guild_id}&disable_guild_select=true'
+    return f'https://discord.com/oauth2/authorize?client_id=887734783139012629&scope=bot%20applications.commands&permissions=7784103761&guild_id={guild_id}&disable_guild_select=true&response_type=code&redirect_uri={url_for("invite_callback", _external=True)}'
+
 
 def checkGuild(id):
     inGuilds = getBotGuilds()
@@ -56,6 +57,7 @@ def checkGuild(id):
         if guild['id'] == id:
             return True
     return False
+
 
 def getBotGuilds():
     client = requests.session()
@@ -65,6 +67,7 @@ def getBotGuilds():
         app.config['DISCORD_API_BASE_URL'] + 'users/@me/guilds').text)
     return guilds
 
+
 def getChannels(guild_id):
     client = requests.session()
     client.headers.update(
@@ -73,6 +76,7 @@ def getChannels(guild_id):
         app.config['DISCORD_API_BASE_URL'] + f'guilds/{guild_id}/channels').text)
     return channels
 
+
 def getChannel(channel_id):
     client = requests.session()
     client.headers.update(
@@ -80,6 +84,7 @@ def getChannel(channel_id):
     channel = json.loads(client.get(
         app.config['DISCORD_API_BASE_URL'] + f'channels/{channel_id}').text)
     return channel
+
 
 @app.route('/login/discord')
 def login():
@@ -102,7 +107,7 @@ def auth():
     print(storagePath)
     if os.path.exists(storagePath):
         userStorage = json.loads(
-        open(os.path.join('data', id, 'user.json')).read())
+            open(os.path.join('data', id, 'user.json')).read())
         userStorage['username'] = username
         userStorage['email'] = email
         userStorage['id'] = id
@@ -118,10 +123,10 @@ def auth():
         userStorage['id'] = id
         userStorage['discord'] = True
         userStorage['discord_token'] = token
-        userStorage ['guilds'] = []
+        userStorage['guilds'] = []
         with open(os.path.join('data', id, 'user.json'), 'w') as outfile:
             json.dump(userStorage, outfile)
-    
+
     flask_login.login_user(user)
     return redirect(url_for('dashboard'))
 
@@ -172,10 +177,17 @@ def guild(guild_id):
             guild = open(os.path.join('data', guild_id, 'guild.json'), 'w')
             guild.write(json.dumps({'guild_id': guild_id}))
             guild.close()
-        guild = json.loads(open(os.path.join('data', guild_id, 'guild.json')).read())
+        guild = json.loads(
+            open(os.path.join('data', guild_id, 'guild.json')).read())
+        if not guild_id in user['guilds']:
+            user['guilds'].append(guild_id)
+            with open(os.path.join('data', flask_login.current_user.get_id(), 'user.json'), 'w') as outfile:
+                json.dump(user, outfile)
+
         return render_template('guild.html', guild=guild, user=user, username=user["username"], guild_id=guild_id)
     else:
         return redirect(getInviteURL(guild_id))
+
 
 @app.route('/dashboard/guild/<guild_id>/channels/<channel_id>/msg')
 @flask_login.login_required
@@ -184,8 +196,10 @@ def guild_msg(guild_id, channel_id):
     user = json.loads(open(os.path.join(
         'data', flask_login.current_user.get_id(), 'user.json')).read())
     if guild_id in user['guilds']:
-        socket.emit('msg', {'message': msg, 'channel_id': channel_id, 'guild_id': guild_id})
+        socket.emit(
+            'msg', {'message': msg, 'channel_id': channel_id, 'guild_id': guild_id})
     return jsonify({'status': 'success', 'handover': True})
+
 
 @app.route('/dashboard/guild/<guild_id>/channels')
 @flask_login.login_required
@@ -199,9 +213,10 @@ def guild_channels(guild_id):
             if channel['type'] == 0 or channel['type'] == 5:
                 textChannels.append(channel)
         return render_template('channels.html', channels=textChannels, guild_id=guild_id)
-       
+
     else:
         return redirect(getInviteURL(guild_id))
+
 
 @app.route('/dashboard/guild/<guild_id>/channels/<channel_id>')
 @flask_login.login_required
@@ -214,4 +229,10 @@ def guild_channel(guild_id, channel_id):
     else:
         return redirect(getInviteURL(guild_id))
 
-# socket.run(app)
+
+@app.route('/invite/callback')
+def invite_callback():
+    return redirect(f'/dashboard/guild/{request.args.get("guild_id")}')
+
+if __name__ == '__main__':
+    socket.run(app)
