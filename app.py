@@ -1,6 +1,6 @@
 #   Copyright (c) 2021 George Keylock
 #   All rights reserved.
-from flask import Flask, jsonify, render_template, redirect, url_for, request
+from flask import Flask, jsonify, render_template, redirect, url_for, request, send_from_directory
 from authlib.integrations.flask_client import OAuth
 import json
 # import gunicorn
@@ -230,6 +230,16 @@ def guild_channel(guild_id, channel_id):
         return redirect(getInviteURL(guild_id))
 
 
+@app.route('/dashboard/admin')
+@flask_login.login_required
+def admin():
+    user = json.loads(open(os.path.join(
+        'data', flask_login.current_user.get_id(), 'user.json')).read())
+    if user['admin'] == True:
+        return render_template('admin.html', user=user, username=user['username'], allGuildsLength=len(getBotGuilds()))
+    else:
+        return redirect(url_for('dashboard'))
+
 @app.route('/invite/callback')
 def invite_callback():
     return redirect(f'/dashboard/guild/{request.args.get("guild_id")}')
@@ -238,5 +248,9 @@ def invite_callback():
 def pingSocket():
     socket.emit('pong')
     socket.emit('reportEvent', {'innerHTML': render_template('report.html', user='AcidFilms', message='Test'), 'user': 'AcidFilms'})
+
+@app.route('/favicon.ico')
+def favicon():
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'logo.png', mimetype='image/png')
 if __name__ == '__main__':
     socket.run(app)
