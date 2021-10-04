@@ -234,5 +234,9 @@ def guild_channel(guild_id, channel_id):
 def invite_callback():
     return redirect(f'/dashboard/guild/{request.args.get("guild_id")}')
 
+@socket.on('ping')
+def pingSocket():
+    socket.emit('pong')
+    socket.emit('reportEvent', {'innerHTML': render_template('report.html', user='AcidFilms', message='Test'), 'user': 'AcidFilms'})
 if __name__ == '__main__':
     socket.run(app)
