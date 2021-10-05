@@ -2,6 +2,7 @@
 #   All rights reserved.
 from flask import Flask, jsonify, render_template, redirect, url_for, request, send_from_directory
 from authlib.integrations.flask_client import OAuth
+import werkzeug.utils
 # import gunicorn
 import requests, flask_login, flask_socketio, os, sched, time, json
 
@@ -170,19 +171,20 @@ def guild(guild_id):
         user = json.loads(open(os.path.join(
             'data', flask_login.current_user.get_id(), 'user.json')).read())
         if not os.path.exists(os.path.join('data', guild_id, 'guild.json')):
-            os.makedirs(os.path.join('data', guild_id))
+            os.makedirs(os.path.join('data', werkzeug.utils.secure_filename(guild_id)))
             guild = open(os.path.join('data', guild_id, 'guild.json'), 'w')
             guild.write(json.dumps({'guild_id': guild_id}))
             guild.close()
         guild = json.loads(
-            open(os.path.join('data', guild_id, 'guild.json')).read())
+            open(os.path.join('data', werkzeug.utils.secure_filename(guild_id), 'guild.json')).read())
         if not guild_id in user['guilds']:
             user['guilds'].append(guild_id)
             with open(os.path.join('data', flask_login.current_user.get_id(), 'user.json'), 'w') as outfile:
                 json.dump(user, outfile)
         return render_template('guild.html', guild=guild, user=user, username=user["username"], guild_id=guild_id)
     else:
-        return redirect(getInviteURL(guild_id))
+        if type(request.args.get('guild_id')) is int:
+            return redirect(getInviteURL(guild_id))
 
 
 @app.route('/dashboard/guild/<guild_id>/channels/<channel_id>/msg')
@@ -211,7 +213,8 @@ def guild_channels(guild_id):
         return render_template('channels.html', channels=textChannels, guild_id=guild_id)
 
     else:
-        return redirect(getInviteURL(guild_id))
+        if type(request.args.get('guild_id')) is int:
+            return redirect(getInviteURL(guild_id))
 
 
 @app.route('/dashboard/guild/<guild_id>/channels/<channel_id>')
@@ -223,7 +226,8 @@ def guild_channel(guild_id, channel_id):
         channel = getChannel(channel_id)
         return render_template('channel.html', channel=channel, guild_id=guild_id)
     else:
-        return redirect(getInviteURL(guild_id))
+        if type(request.args.get('guild_id')) is int:
+            return redirect(getInviteURL(guild_id))
 
 
 @app.route('/dashboard/admin')
@@ -238,7 +242,8 @@ def admin():
 
 @app.route('/invite/callback')
 def invite_callback():
-    return redirect(f'/dashboard/guild/{request.args.get("guild_id")}')
+    if type(request.args.get('guild_id')) is int:
+        return redirect(f'/dashboard/guild/{request.args.get("guild_id")}')
 
 @socket.on('ping')
 def pingSocket():
