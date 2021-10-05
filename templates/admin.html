@@ -10,6 +10,10 @@
     <title>Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.2.0/dist/socket.io.min.js"
+        integrity="sha256-Kz7CzdTU8TMyn59YIxWrJzMGuaaOBxi6iLs2oPuHm94=" crossorigin="anonymous"></script>
+    <script src="/static/admin.js"></script>
+
 
 </head>
 
@@ -51,6 +55,9 @@
                 <h5 class="card-title">Stats</h5>
                 <p>
                     Total guilds: {{ allGuildsLength }}<br>
+                </p>
+                <p>
+                    Status: <span id="statusSpan" class="badge bg-secondary">Please wait...</span>
                 </p>
             </div>
         </div>

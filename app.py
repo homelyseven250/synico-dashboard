@@ -2,14 +2,10 @@
 #   All rights reserved.
 from flask import Flask, jsonify, render_template, redirect, url_for, request, send_from_directory
 from authlib.integrations.flask_client import OAuth
-import json
 # import gunicorn
-import requests
-import flask_login
-import flask_socketio
-import os
+import requests, flask_login, flask_socketio, os, sched, time, json
 
-
+s = sched.scheduler(time.time, time.sleep)
 app = Flask(__name__)
 
 # Import the config file
@@ -20,6 +16,7 @@ oauth = OAuth(app)
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 socket = flask_socketio.SocketIO(app)
+botSID = None
 
 
 @login_manager.user_loader
@@ -183,7 +180,6 @@ def guild(guild_id):
             user['guilds'].append(guild_id)
             with open(os.path.join('data', flask_login.current_user.get_id(), 'user.json'), 'w') as outfile:
                 json.dump(user, outfile)
-
         return render_template('guild.html', guild=guild, user=user, username=user["username"], guild_id=guild_id)
     else:
         return redirect(getInviteURL(guild_id))
@@ -249,8 +245,39 @@ def pingSocket():
     socket.emit('pong')
     socket.emit('reportEvent', {'innerHTML': render_template('report.html', user='AcidFilms', message='Test'), 'user': 'AcidFilms'})
 
+
+
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'logo.png', mimetype='image/png')
+
+@socket.on('connect')
+def connection(data):
+    global botSID
+    if data:
+        if data['key'] == app.config['BOT_KEY']:
+            botSID = request.sid
+        else:
+            print("Bot presented incorrect auth key - rejecting")
+            print(data['key'])
+
+@socket.on('pingBot')
+def pingBot():
+    if botSID:
+        socket.emit('ping', to=botSID)
+        socket.emit('pinged', to=request.sid)
+
+@socket.on('pong')
+def pong():
+    socket.emit('botStatus', {"status": "OK"}, broadcast=True)
+
+@socket.on('settingsChange')
+def settingsChange(data):
+    socket.emit('settingsChange', data, to=botSID)
+
+# @socket.on('getWarnings')
+# def getWarnings(data):
+#     socket.emit('getWarnings', {"guildID": data['guildID']}, to=botSID)
+
 if __name__ == '__main__':
     socket.run(app)

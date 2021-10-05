@@ -8,9 +8,11 @@
     <meta name="description" content="">
     <meta name="author" content="">
     <title>Dashboard</title>
-    
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.2.0/dist/socket.io.min.js" integrity="sha256-Kz7CzdTU8TMyn59YIxWrJzMGuaaOBxi6iLs2oPuHm94=" crossorigin="anonymous"></script>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.2.0/dist/socket.io.min.js"
+        integrity="sha256-Kz7CzdTU8TMyn59YIxWrJzMGuaaOBxi6iLs2oPuHm94=" crossorigin="anonymous"></script>
     <script src="/static/guildDashboard.js"></script>
 </head>
 
@@ -50,13 +52,29 @@
             <a class="nav-link active" aria-current="page">Dashboard</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" class="nav-link active" aria-current="page" href="/dashboard/guild/{{guild_id}}/channels">Channels</a>
+            <a class="nav-link" class="nav-link active" aria-current="page"
+                href="/dashboard/guild/{{guild_id}}/channels">Channels</a>
         </li>
     </ul>
     <div class="container">
-        <div id="reports"></div>
+        <div class="card">
+            <div class="card-header">
+                <h4>Basic Settings</h4>
+            </div>
+            <div class="card-body" id="settings">
+                <form id="basic-form" action="javascript:void(0);" class="row g-3">
+                    <div class="form-group col-auto">
+                        <label for="bot-name">Bot Name</label>
+                        <input type="text" class="form-control" id="bot-name" placeholder="Bot Name">
+                        <input type="submit" class="btn btn-primary" id="basic-submit">
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ"
+        crossorigin="anonymous"></script>
 </body>
 
 </html>
