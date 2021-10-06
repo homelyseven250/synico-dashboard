@@ -29,11 +29,11 @@ def load_user(user_id):
 
 discord = oauth.register(
     name='discord',
-    client_id='887734783139012629',
-    client_secret='L3tLMeTXpyItz3OMYUX4gv3wLOe5KRvB',
-    access_token_url='https://discord.com/api/oauth2/token',
+    client_id=app.config['DISCORD_BOT_ID'],
+    client_secret=app.config['OAUTH2_SECRET'],
+    access_token_url=app.config['DISCORD_API_BASE_URL'] + 'oauth2/token',
     access_token_params=None,
-    authorize_url='https://discord.com/api/oauth2/authorize',
+    authorize_url='https://discord.com/oauth2/authorize',
     authorize_params=None,
     api_base_url=app.config['DISCORD_API_BASE_URL'],
     client_kwargs={'scope': 'identify email guilds'},
@@ -181,10 +181,10 @@ def guild(guild_id):
             user['guilds'].append(guild_id)
             with open(os.path.join('data', flask_login.current_user.get_id(), 'user.json'), 'w') as outfile:
                 json.dump(user, outfile)
-        return render_template('guild.html', guild=guild, user=user, username=user["username"], guild_id=guild_id)
+        commands = json.load(open(os.path.join('staticData','commands.json')))
+        return render_template('guild.html', guild=guild, user=user, username=user["username"], guild_id=guild_id, commands=commands)
     else:
-        if type(request.args.get('guild_id')) is int:
-            return redirect(getInviteURL(guild_id))
+        return redirect(getInviteURL(guild_id))
 
 
 @app.route('/dashboard/guild/<guild_id>/channels/<channel_id>/msg')
@@ -213,8 +213,7 @@ def guild_channels(guild_id):
         return render_template('channels.html', channels=textChannels, guild_id=guild_id)
 
     else:
-        if type(request.args.get('guild_id')) is int:
-            return redirect(getInviteURL(guild_id))
+        return redirect(getInviteURL(guild_id))
 
 
 @app.route('/dashboard/guild/<guild_id>/channels/<channel_id>')
@@ -226,8 +225,7 @@ def guild_channel(guild_id, channel_id):
         channel = getChannel(channel_id)
         return render_template('channel.html', channel=channel, guild_id=guild_id)
     else:
-        if type(request.args.get('guild_id')) is int:
-            return redirect(getInviteURL(guild_id))
+        return redirect(getInviteURL(guild_id))
 
 
 @app.route('/dashboard/admin')
@@ -242,8 +240,7 @@ def admin():
 
 @app.route('/invite/callback')
 def invite_callback():
-    if type(request.args.get('guild_id')) is int:
-        return redirect(f'/dashboard/guild/{request.args.get("guild_id")}')
+    return redirect(f'/dashboard/guild/{request.args.get("guild_id")}')
 
 @socket.on('ping')
 def pingSocket():
@@ -280,6 +277,19 @@ def pong():
 def settingsChange(data):
     socket.emit('settingsChange', data, to=botSID)
 
+@socket.on('getAllCommands')
+def getAllCommands():
+    socket.emit('getAllCommands', {"sid": request.sid}, to=botSID)
+
+@socket.on('allCommands')
+def allCommands(data):
+    commands = {}
+    for entry in data['commands']:
+        if not entry['cog'] in commands:
+            commands[entry['cog']] = []
+        commands[entry['cog']].append(entry)
+    json.dump(commands,open(os.path.join('staticData','commands.json'),'w'))
+    socket.emit('allCommands', data['commands'], to=data["sid"])
 # @socket.on('getWarnings')
 # def getWarnings(data):
 #     socket.emit('getWarnings', {"guildID": data['guildID']}, to=botSID)

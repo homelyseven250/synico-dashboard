@@ -32,3 +32,11 @@ document.addEventListener('DOMContentLoaded', function (e) {
         };
     });
 });
+
+function getAllCommands() {
+    socket.emit('getAllCommands');
+}
+
+socket.on('allCommands', function (data) {
+    console.log(data);
+});
