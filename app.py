@@ -187,45 +187,50 @@ def guild(guild_id):
         return redirect(getInviteURL(guild_id))
 
 
-@app.route('/dashboard/guild/<guild_id>/channels/<channel_id>/msg')
+@app.route('/dashboard/guild/<guild_id>/embed')
 @flask_login.login_required
-def guild_msg(guild_id, channel_id):
-    msg = request.args.get('message')
-    user = json.loads(open(os.path.join(
-        'data', flask_login.current_user.get_id(), 'user.json')).read())
-    if guild_id in user['guilds']:
-        socket.emit(
-            'msg', {'message': msg, 'channel_id': channel_id, 'guild_id': guild_id})
-    return jsonify({'status': 'success', 'handover': True})
+def embedRoute(guild_id):
+    return "OK"
+
+# @app.route('/dashboard/guild/<guild_id>/channels/<channel_id>/msg')
+# @flask_login.login_required
+# def guild_msg(guild_id, channel_id):
+#     msg = request.args.get('message')
+#     user = json.loads(open(os.path.join(
+#         'data', flask_login.current_user.get_id(), 'user.json')).read())
+#     if guild_id in user['guilds']:
+#         socket.emit(
+#             'msg', {'message': msg, 'channel_id': channel_id, 'guild_id': guild_id})
+#     return jsonify({'status': 'success', 'handover': True})
 
 
-@app.route('/dashboard/guild/<guild_id>/channels')
-@flask_login.login_required
-def guild_channels(guild_id):
-    user = json.loads(open(os.path.join(
-        'data', flask_login.current_user.get_id(), 'user.json')).read())
-    if guild_id in user['guilds']:
-        channels = getChannels(guild_id)
-        textChannels = []
-        for channel in channels:
-            if channel['type'] == 0 or channel['type'] == 5:
-                textChannels.append(channel)
-        return render_template('channels.html', channels=textChannels, guild_id=guild_id)
+# @app.route('/dashboard/guild/<guild_id>/channels')
+# @flask_login.login_required
+# def guild_channels(guild_id):
+#     user = json.loads(open(os.path.join(
+#         'data', flask_login.current_user.get_id(), 'user.json')).read())
+#     if guild_id in user['guilds']:
+#         channels = getChannels(guild_id)
+#         textChannels = []
+#         for channel in channels:
+#             if channel['type'] == 0 or channel['type'] == 5:
+#                 textChannels.append(channel)
+#         return render_template('channels.html', channels=textChannels, guild_id=guild_id)
 
-    else:
-        return redirect(getInviteURL(guild_id))
+#     else:
+#         return redirect(getInviteURL(guild_id))
 
 
-@app.route('/dashboard/guild/<guild_id>/channels/<channel_id>')
-@flask_login.login_required
-def guild_channel(guild_id, channel_id):
-    user = json.loads(open(os.path.join(
-        'data', flask_login.current_user.get_id(), 'user.json')).read())
-    if guild_id in user['guilds']:
-        channel = getChannel(channel_id)
-        return render_template('channel.html', channel=channel, guild_id=guild_id)
-    else:
-        return redirect(getInviteURL(guild_id))
+# @app.route('/dashboard/guild/<guild_id>/channels/<channel_id>')
+# @flask_login.login_required
+# def guild_channel(guild_id, channel_id):
+#     user = json.loads(open(os.path.join(
+#         'data', flask_login.current_user.get_id(), 'user.json')).read())
+#     if guild_id in user['guilds']:
+#         channel = getChannel(channel_id)
+#         return render_template('channel.html', channel=channel, guild_id=guild_id)
+#     else:
+#         return redirect(getInviteURL(guild_id))
 
 
 @app.route('/dashboard/admin')
