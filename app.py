@@ -1,6 +1,6 @@
 #   Copyright (c) 2021 George Keylock
 #   All rights reserved.
-from flask import Flask, jsonify, render_template, redirect, url_for, request, send_from_directory
+from flask import Flask, jsonify, render_template, redirect, url_for, request, send_from_directory, abort
 from authlib.integrations.flask_client import OAuth
 import werkzeug.utils
 # import gunicorn
@@ -167,24 +167,27 @@ def logout():
 @app.route('/dashboard/guild/<guild_id>')
 @flask_login.login_required
 def guild(guild_id):
-    if checkGuild(guild_id):
-        user = json.loads(open(os.path.join(
-            'data', flask_login.current_user.get_id(), 'user.json')).read())
-        if not os.path.exists(os.path.join('data', guild_id, 'guild.json')):
-            os.makedirs(os.path.join('data', werkzeug.utils.secure_filename(guild_id)))
-            guild = open(os.path.join('data', guild_id, 'guild.json'), 'w')
-            guild.write(json.dumps({'guild_id': guild_id}))
-            guild.close()
-        guild = json.loads(
-            open(os.path.join('data', werkzeug.utils.secure_filename(guild_id), 'guild.json')).read())
-        if not guild_id in user['guilds']:
-            user['guilds'].append(guild_id)
-            with open(os.path.join('data', flask_login.current_user.get_id(), 'user.json'), 'w') as outfile:
-                json.dump(user, outfile)
-        commands = json.load(open(os.path.join('staticData','commands.json')))
-        return render_template('guild.html', guild=guild, user=user, username=user["username"], guild_id=guild_id, commands=commands)
+    if guild_id.isdecimal():
+        if checkGuild(guild_id):
+            user = json.loads(open(os.path.join(
+                'data', flask_login.current_user.get_id(), 'user.json')).read())
+            if not os.path.exists(os.path.join('data', guild_id, 'guild.json')):
+                os.makedirs(os.path.join('data', werkzeug.utils.secure_filename(guild_id)))
+                guild = open(os.path.join('data', guild_id, 'guild.json'), 'w')
+                guild.write(json.dumps({'guild_id': guild_id}))
+                guild.close()
+            guild = json.loads(
+                open(os.path.join('data', werkzeug.utils.secure_filename(guild_id), 'guild.json')).read())
+            if not guild_id in user['guilds']:
+                user['guilds'].append(guild_id)
+                with open(os.path.join('data', flask_login.current_user.get_id(), 'user.json'), 'w') as outfile:
+                    json.dump(user, outfile)
+            commands = json.load(open(os.path.join('staticData','commands.json')))
+            return render_template('guild.html', guild=guild, user=user, username=user["username"], guild_id=guild_id, commands=commands)
+        else:
+            return redirect(getInviteURL(guild_id))
     else:
-        return redirect(getInviteURL(guild_id))
+        abort(403)
 
 
 @app.route('/dashboard/guild/<guild_id>/embed')
@@ -245,7 +248,10 @@ def admin():
 
 @app.route('/invite/callback')
 def invite_callback():
-    return redirect(f'/dashboard/guild/{request.args.get("guild_id")}')
+    if request.args.get("guild_id").isdecimal():
+        return redirect(f'/dashboard/guild/{request.args.get("guild_id")}')
+    else:
+        abort(403)
 
 @socket.on('ping')
 def pingSocket():
@@ -286,6 +292,16 @@ def settingsChange(data):
 def getAllCommands():
     socket.emit('getAllCommands', {"sid": request.sid}, to=botSID)
 
+
+@socket.on('getDisabledCommands')
+def getAllCommands():
+    socket.emit('getDisabledCommands', {"sid": request.sid}, to=botSID)
+
+@socket.on('disabledCommands')
+def disabledCommands(data):
+    socket.emit('disabledCommands', data, to=data['sid'])
+
+
 @socket.on('allCommands')
 def allCommands(data):
     commands = {}
@@ -293,6 +309,7 @@ def allCommands(data):
         if not entry['cog'] in commands:
             commands[entry['cog']] = []
         commands[entry['cog']].append(entry)
+    del commands[None]
     json.dump(commands,open(os.path.join('staticData','commands.json'),'w'))
     socket.emit('allCommands', data['commands'], to=data["sid"])
 # @socket.on('getWarnings')
