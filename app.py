@@ -301,6 +301,9 @@ def getAllCommands():
 def disabledCommands(data):
     socket.emit('disabledCommands', data, to=data['sid'])
 
+@socket.on('enableCommand')
+def enableCommand(data):
+    socket.emit('enableCommand', data, to=botSID)
 
 @socket.on('allCommands')
 def allCommands(data):
