@@ -4,9 +4,8 @@ from flask import Flask, jsonify, render_template, redirect, url_for, request, s
 from authlib.integrations.flask_client import OAuth
 import werkzeug.utils
 # import gunicorn
-import requests, flask_login, flask_socketio, os, sched, time, json
+import requests, flask_login, flask_socketio, os, json
 
-s = sched.scheduler(time.time, time.sleep)
 app = Flask(__name__)
 
 # Import the config file
@@ -311,16 +310,16 @@ def disabledCommands(data):
 def enableCommand(data):
     socket.emit('enableCommand', data, to=botSID) # Requests a command to be enabled - UNIMPLEMENTED ON BOT
 
-@socket.on('allCommands')
+@socket.on('allCommands') # When we receive the list of all the commands
 def allCommands(data):
     commands = {}
-    for entry in data['commands']:
-        if not entry['cog'] in commands:
-            commands[entry['cog']] = []
-        commands[entry['cog']].append(entry)
-    del commands[None]
-    json.dump(commands,open(os.path.join('staticData','commands.json'),'w'))
-    socket.emit('allCommands', data['commands'], to=data["sid"])
+    for entry in data['commands']: 
+        if not entry['cog'] in commands: # If we don't have the cog in the dict
+            commands[entry['cog']] = [] # Make a new dict key with an empty list for that cog
+        commands[entry['cog']].append(entry) # Add the command to its respective cog
+    del commands[None] # Delete commands with no cog - this includes some sort of default help command
+    json.dump(commands,open(os.path.join('staticData','commands.json'),'w')) # Save to a file
+    socket.emit('allCommands', data['commands'], to=data["sid"]) # Emit them (currently unused)
 # @socket.on('getWarnings')
 # def getWarnings(data):
 #     socket.emit('getWarnings', {"guildID": data['guildID']}, to=botSID)
