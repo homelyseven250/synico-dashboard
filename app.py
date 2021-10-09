@@ -243,7 +243,8 @@ def admin():
     user = json.loads(open(os.path.join(
         'data', flask_login.current_user.get_id(), 'user.json')).read()) # Load user data
     if user['admin'] == True: # Is the user an admin?
-        return render_template('admin.html', user=user, username=user['username'], allGuildsLength=len(getBotGuilds())) # If so, render and return the admin page
+        commands = json.load(open(os.path.join('staticData','commands.json')))
+        return render_template('admin.html', user=user, username=user['username'], allGuildsLength=len(getBotGuilds()), commands=commands) # If so, render and return the admin page
     else:
         return redirect(url_for('dashboard')) # Redirect to the normal dashboard if not
 
@@ -308,7 +309,7 @@ def disabledCommands(data):
 
 @socket.on('enableCommand')
 def enableCommand(data):
-    socket.emit('enableCommand', data, to=botSID) # Requests a command to be enabled - UNIMPLEMENTED ON BOT
+    socket.emit('enableCommand', data, to=botSID) # Requests a command to be enabled
 
 @socket.on('allCommands') # When we receive the list of all the commands
 def allCommands(data):
@@ -323,6 +324,10 @@ def allCommands(data):
 # @socket.on('getWarnings')
 # def getWarnings(data):
 #     socket.emit('getWarnings', {"guildID": data['guildID']}, to=botSID)
+
+@socket.on('updateCommands')
+def updateCommands(data):
+    socket.emit('updateCommands', data, to=botSID)
 
 if __name__ == '__main__':
     socket.run(app) # Run it if not using flask debugger

@@ -27,7 +27,11 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarSupportedContent">
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0 ">
-
+                    <li class="nav-item">
+                        {% if user["admin"] == True%}
+                        <a class="nav-link" href="/dashboard/admin">Admin</a>
+                        {% endif %}
+                    </li>
 
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
@@ -71,7 +75,7 @@
                 </form>
             </div>
         </div>
-        {% for cog in commands %}
+        <!-- {% for cog in commands %}
         <div class="card">
             <div class="card-header">
                 <h4>{{cog}}</h4>
@@ -93,7 +97,7 @@
                 </form>
             </div>
         </div>
-        {% endfor %}
+        {% endfor %} -->
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ"

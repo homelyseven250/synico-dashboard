@@ -26,16 +26,9 @@ socket.on('botStatus', function (data) {
 });
 
 socket.on('disabledCommands', function (data) {
-    var disabledCommandsDiv = document.getElementById('disabled-commands');
     data.disabledCommands.forEach(element => {
-        var enableButton = document.createElement('button');
-        enableButton.setAttribute('class', 'btn btn-primary');
-        enableButton.innerText = `Enable ${element.name}`;
-        enableButton.addEventListener('click', function () {
-            socket.emit('enableCommand', element)
-        });
-        disabledCommandsDiv.appendChild(enableButton);
-        disabledCommandsDiv.appendChild(document.createElement('br'))
+        var checkbox = document.getElementById(element.name);
+        checkbox.removeAttribute('checked')
     });
 
 });
@@ -46,11 +39,29 @@ setInterval(pingBot, 1000);
 
 window.addEventListener('DOMContentLoaded', function () {
     var triggerCommandSyncBtn = document.getElementById('triggerCommandSync');
-    triggerCommandSyncBtn.addEventListener('click', function () {
+    triggerCommandSyncBtn.addEventListener('click', e => {
         socket.emit('getAllCommands');
     });
     var disabledCommandSyncBtn = document.getElementById('disabledCommandSync');
-    disabledCommandSyncBtn.addEventListener('click', function () {
+    disabledCommandSyncBtn.addEventListener('click', e => {
         socket.emit('getDisabledCommands');
     });
+    var saveSettingsBtn = document.getElementById('saveSettingsBtn');
+    saveSettingsBtn.addEventListener('click', e => {
+        var checkboxes = document.getElementsByClassName('checkbox-command');
+        var enabled = [];
+        var disabled = [];
+        Array.from(checkboxes).forEach(checkbox => {
+            if (checkbox.checked) {
+                enabled.push(checkbox.id);
+            } else {
+                disabled.push(checkbox.id);
+            }
+
+        });
+        console.log(enabled);
+        console.log(disabled);
+        socket.emit('updateCommands', {enabled: enabled, disabled: disabled})
+    });
+    socket.emit('getDisabledCommands');
 });
