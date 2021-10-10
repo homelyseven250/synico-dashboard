@@ -4,7 +4,7 @@
  */
 
 var gotPing;
-const socket = io()
+const socket = io({transports: ["websocket"]})
 function pingBot() {
     if (gotPing != true) {
         statusSpan.classList = ['badge bg-danger']

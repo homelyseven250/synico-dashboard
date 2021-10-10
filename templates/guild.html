@@ -75,29 +75,35 @@
                 </form>
             </div>
         </div>
-        <!-- {% for cog in commands %}
+        {% for cog in commands %}
         <div class="card">
             <div class="card-header">
                 <h4>{{cog}}</h4>
             </div>
             <div class="card-body" id="settings">
-                <form id="mod-form" action="javascript:void(0);" class="row g-3">
+                <form id="mod-form" action="javascript:void(0);" class="row g-3 commands-form">
                     <div class="form-group col-auto">
-                        
+
                         {% for command in commands[cog] %}
                         <div class="form-check">
-                            <input class="form-check-input" type="checkbox" value="{{command['name']}}" id="{{command['name']}}">
+                            <input class="form-check-input checkbox-command" type="checkbox" checked
+                                value="{{command['name']}}" id="{{command['name']}}">
                             <label class="form-check-label" for="{{command['name']}}">
                                 {{command['name']}} - <span class="text-muted">{{command['help']}}</span>
                             </label>
-                            </div>
+                        </div>
                         {% endfor %}
-                        <input type="submit" class="btn btn-primary" id="mod-submit">
                     </div>
                 </form>
             </div>
         </div>
-        {% endfor %} -->
+        {% endfor %}
+        <div class="card">
+            <div class="card-body">
+                <button class="btn btn-danger" id="saveSettingsBtn">Save Settings</button>
+            </div>
+        </div>
+    </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ"

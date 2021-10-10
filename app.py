@@ -15,7 +15,7 @@ oauthCache = {}
 oauth = OAuth(app)
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
-socket = flask_socketio.SocketIO(app)
+socket = flask_socketio.SocketIO(app, ping_timeout=60)
 botSID = None
 
 
@@ -187,6 +187,29 @@ def guild(guild_id):
             return redirect(getInviteURL(guild_id))
     else:
         abort(400) # If you're curious Acid, see here: https://mzl.la/3FEFpdR
+
+@app.route('/dashboard/guild/<guild_id>/enable/<command>')
+@flask_login.login_required
+def enableGuildCommand(guild_id, command):
+    socket.emit('guildEnableCommands', {"guild_id": guild_id, "commands": [command]}, to=botSID)
+
+@app.route('/dashboard/guild/<guild_id>/disable/<command>')
+@flask_login.login_required
+def disableGuildCommand(guild_id, command):
+    socket.emit('guildDisableCommands', {"guild_id": guild_id, "commands": [command]}, to=botSID)
+
+@socket.on('updateGuildCommands')
+def updateGuildCommands(data):
+    socket.emit('guildEnableCommands', {"guild_id": data['guild_id'], "commands": data['enabled']}, to=botSID)
+    socket.emit('guildDisableCommands', {"guild_id": data['guild_id'], "commands": data['disabled']}, to=botSID)
+
+@socket.on('getGuildDisabledCommands')
+def guildDisabledCommands(data):
+    socket.emit('getGuildDisabledCommands', {"sid": request.sid, "guild_id": data['guild_id']}, to=botSID)
+
+@socket.on('sendGuildDisabledCommands')
+def sendGuildDisabledCommands(data):
+    socket.emit('sendGuildDisabledCommands', data, to=data['sid'])
 
 # Test code
 # @app.route('/dashboard/guild/<guild_id>/embed')
