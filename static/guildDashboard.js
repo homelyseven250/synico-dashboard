@@ -2,7 +2,7 @@
  *   Copyright (c) 2021 George Keylock
  *   All rights reserved.
  */
-var socket = io({transports: ["websocket"]});
+var socket = io({ transports: ["websocket"] });
 
 // function processWarning(data) {
 //     var reportsDiv = document.getElementById('warnings');
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
     basicFormSubmit.addEventListener('click', function (e) {
         for (let element of basicForm.children[0].children) {
             if (element.getAttribute('type') == 'text') {
-                socket.emit('settingsChange', { key: element.id, value: element.value });
+                socket.emit('settingsChange', { key: element.id, value: element.value, guild_id: location.href.substring(location.href.lastIndexOf('/') + 1) });
             }
         };
     });
