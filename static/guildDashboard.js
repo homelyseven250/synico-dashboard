@@ -31,6 +31,31 @@ document.addEventListener('DOMContentLoaded', function (e) {
             }
         };
     });
+
+    var embedFormSubmit = document.getElementById('embed-submit');
+    var embedForm = document.getElementById('embed-form');
+    embedFormSubmit.addEventListener('click', function (e) {
+        
+        var embedData = {};
+        for (let element of embedForm.children[0].children) {
+            console.log(element.type);
+            if (element.getAttribute('type') == 'text') {
+                embedData[element.id] = element.value;
+            } else if (element.type == "select-one") {
+                console.log(element.selectedOptions[0].id);
+                embedData[element.id] = element.selectedOptions[0].id;
+            }
+        }
+        var thumbnail = document.getElementById('message-thumbnail');
+        if (thumbnail.files.length == 1) {
+            var formData = new FormData();
+            formData.append('data', JSON.stringify(embedData));
+            formData.append('thumbnail', thumbnail.files[0]);
+            fetch('/api/dashboard/embed', { method: "POST", body: formData })
+        }
+        console.log(embedData);
+
+    });
     var saveSettingsBtn = document.getElementById('saveSettingsBtn');
     saveSettingsBtn.addEventListener('click', e => {
         var checkboxes = document.getElementsByClassName('checkbox-command');

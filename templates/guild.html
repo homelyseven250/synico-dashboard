@@ -75,6 +75,31 @@
                 </form>
             </div>
         </div>
+        <div class="card">
+            <div class="card-header">
+                <h4>Embed Builder</h4>
+            </div>
+            <div class="card-body" id="settings">
+                <form id="embed-form" action="javascript:void(0);" class="row g-3">
+                    <div class="form-group col-auto">
+                        <label for="message-text">Message</label>
+                        <input type="text" class="form-control" id="message-text" placeholder="Enter your message here">
+                        <label for="message-thumbnail">Select a thumbnail</label>
+                        <input type="file" class="form-control" id="message-thumbnail">
+                        <label for="embed-channel">Choose a channel:</label>
+
+                        <select name="embed-channel" id="embed-channel" class="form-control">
+                            {% for channel in channels%}
+                            {% if channel['type'] == 0%}
+                            <option id="{{channel['id']}}">{{channel['name']}}</option>
+                            {%endif%}
+                            {%endfor%}
+                        </select>
+                        <input type="submit" class="btn btn-primary" id="embed-submit">
+                    </div>
+                </form>
+            </div>
+        </div>
         {% for cog in commands %}
         <div class="card">
             <div class="card-header">
