@@ -2,3 +2,5 @@ data/
 __pycache__/
 venv/
 /config.py
+botAssets/
+app.py.custom

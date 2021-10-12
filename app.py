@@ -8,6 +8,7 @@ import flask_socketio
 # import gunicorn
 import requests
 import werkzeug.utils
+import markdownify
 from authlib.integrations.flask_client import OAuth
 from flask import Flask, render_template, redirect, url_for, request, send_from_directory, abort
 
@@ -99,7 +100,7 @@ def getChannel(channel_id):
 # Redirect to discord login
 @app.route('/login/discord')
 def login():
-    return discord.authorize_redirect()
+    return discord.authorize_redirect(url_for('auth', _external=True))
 
 
 @app.route('/auth/discord')
@@ -307,16 +308,38 @@ def botAssets(assetID):
     return send_from_directory('botAssets', werkzeug.utils.secure_filename(assetID))
 
 @app.route('/api/dashboard/embed', methods=["POST"])
+@flask_login.login_required
 def embed():
-    if 'thumbnail' in request.files and request.files['thumbnail'].filename != '':
-        thumbnail = request.files['thumbnail']
-        thumbnailID = os.urandom(32).hex() + '.' + thumbnail.filename.rsplit('.', 1)[1].lower()
-        thumbnailPath = os.path.join('botAssets', thumbnailID)
-        thumbnail.save(thumbnailPath)
+    user = json.loads(open(os.path.join(
+        'data', flask_login.current_user.get_id(), 'user.json')).read())
     data = json.loads(request.form['data'])
-    data['thumbnail'] = url_for('botAssets', assetID=thumbnailID, _external=True)
-    socket.emit('embed', data)
-    return "200"
+    if data['guildID'] in user['guilds']:
+            if 'thumbnail' in request.files and request.files['thumbnail'].filename != '':
+                print("Thumbnail true")
+                thumbnail = request.files['thumbnail']
+                thumbnailID = os.urandom(32).hex() + '.' + thumbnail.filename.rsplit('.', 1)[1].lower()
+                thumbnailPath = os.path.join('botAssets', thumbnailID)
+                thumbnail.save(thumbnailPath)
+                data['thumbnail'] = url_for('botAssets', assetID=thumbnailID, _external=True)
+            if 'image' in request.files and request.files['image'].filename != '':
+                print("Image true")
+                image = request.files['image']
+                imageID = os.urandom(32).hex() + '.' + image.filename.rsplit('.', 1)[1].lower()
+                imagePath = os.path.join('botAssets', imageID)
+                image.save(imagePath)
+                data['image'] = url_for('botAssets', assetID=imageID, _external=True)
+            if 'authorIcon' in request.files and request.files['authorIcon'].filename != '':
+                print("Author icon true")
+                authorIcon = request.files['authorIcon']
+                authorIconID = os.urandom(32).hex() + '.' + authorIcon.filename.rsplit('.', 1)[1].lower()
+                authorIconPath = os.path.join('botAssets', authorIconID)
+                authorIcon.save(authorIconPath)
+                data['authorIcon'] = url_for('botAssets', assetID=authorIconID, _external=True)
+            data['message-text'] = markdownify.markdownify(data['message-text'])
+            socket.emit('embed', data, to=botSID)
+            return "200"
+    else:
+        abort(403)
 
     
 
@@ -408,4 +431,5 @@ def updateCommands(data):
 
 
 if __name__ == '__main__':
-    socket.run(app)  # Run it if not using flask debugger
+    socket.run(app, host='0.0.0.0', port=443, keyfile="/etc/letsencrypt/live/gkworkstation.uksouth.cloudapp.azure.com/privkey.pem", certfile="/etc/letsencrypt/live/gkworkstation.uksouth.cloudapp.azure.com/fullchain.pem") # Run it if not using flask debugger
+

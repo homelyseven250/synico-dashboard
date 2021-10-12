@@ -44,15 +44,29 @@ document.addEventListener('DOMContentLoaded', function (e) {
             } else if (element.type == "select-one") {
                 console.log(element.selectedOptions[0].id);
                 embedData[element.id] = element.selectedOptions[0].id;
+            } else if (element.type == "color") {
+                embedData[element.id] = element.value;
             }
         }
+        embedData['message-text'] = document.getElementById('message-text').innerHTML;
+        embedData['guildID'] = location.href.substring(location.href.lastIndexOf('/') + 1)
+
         var thumbnail = document.getElementById('message-thumbnail');
-        if (thumbnail.files.length == 1) {
-            var formData = new FormData();
+        var image = document.getElementById('message-image');
+        var authorIcon = document.getElementById("message-author-icon");
+        
+        var formData = new FormData();
             formData.append('data', JSON.stringify(embedData));
-            formData.append('thumbnail', thumbnail.files[0]);
-            fetch('/api/dashboard/embed', { method: "POST", body: formData })
+        if (thumbnail.files.length == 1) {
+            formData.append('thumbnail', thumbnail.files[0]);            
         }
+        if (image.files.length == 1) {
+            formData.append('image', image.files[0]);            
+        }
+        if (authorIcon.files.length == 1) {
+            formData.append('authorIcon', authorIcon.files[0]);            
+        }
+        fetch('/api/dashboard/embed', { method: "POST", body: formData });
         console.log(embedData);
 
     });

@@ -83,10 +83,25 @@
                 <form id="embed-form" action="javascript:void(0);" class="row g-3">
                     <div class="form-group col-auto">
                         <label for="message-text">Message</label>
-                        <input type="text" class="form-control" id="message-text" placeholder="Enter your message here">
+                        <!-- <input type="text" class="form-control" id="message-text" placeholder="Enter your message here"> -->
+                        <div class="form-control" id="message-text" contenteditable></div>
+                        <label for="message-author">Author</label>
+                        <input type="text" class="form-control" id="message-author" placeholder="Enter author">
+
+                        <label for="message-author-url">Author URL</label>
+                        <input type="text" class="form-control" id="message-author-url" placeholder="Enter author URL">
+
+                        <label for="message-author-icon">Author Icon</label>
+                        <input type="file" class="form-control" id="message-author-icon">
+
                         <label for="message-thumbnail">Select a thumbnail</label>
                         <input type="file" class="form-control" id="message-thumbnail">
+
+                        <label for="message-image">Select a image</label>
+                        <input type="file" class="form-control" id="message-image">
+
                         <label for="embed-channel">Choose a channel:</label>
+                        <input class="form-control" type="color" id="message-color" value="#202225">
 
                         <select name="embed-channel" id="embed-channel" class="form-control">
                             {% for channel in channels%}
