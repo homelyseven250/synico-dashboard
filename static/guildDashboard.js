@@ -2,6 +2,7 @@
  *   Copyright (c) 2021 George Keylock
  *   All rights reserved.
  */
+var token;
 var socket = io({ transports: ["websocket"] });
 
 // function processWarning(data) {
@@ -22,12 +23,15 @@ var socket = io({ transports: ["websocket"] });
 //     }
 // })
 document.addEventListener('DOMContentLoaded', function (e) {
+    
+    
+
     var basicFormSubmit = document.getElementById('basic-submit');
     var basicForm = document.getElementById('basic-form');
     basicFormSubmit.addEventListener('click', function (e) {
         for (let element of basicForm.children[0].children) {
             if (element.getAttribute('type') == 'text') {
-                socket.emit('settingsChange', { key: element.id, value: element.value, guild_id: location.href.substring(location.href.lastIndexOf('/') + 1) });
+                socket.emit('settingsChange', { key: element.id, value: element.value, guild_id: location.href.substring(location.href.lastIndexOf('/') + 1), token: token});
             }
         };
     });
@@ -85,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
         });
         console.log(enabled);
         console.log(disabled);
-        socket.emit('updateGuildCommands', { guild_id: location.href.substring(location.href.lastIndexOf('/') + 1), enabled: enabled, disabled: disabled })
+        socket.emit('updateGuildCommands', { guild_id: location.href.substring(location.href.lastIndexOf('/') + 1), enabled: enabled, disabled: disabled , token: token})
     });
     socket.on('sendGuildDisabledCommands', data => {
         data.disabledCommands.forEach(element => {
@@ -93,7 +97,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
             checkbox.removeAttribute('checked')
         });
     });
-    socket.emit('getGuildDisabledCommands', { guild_id: location.href.substring(location.href.lastIndexOf('/') + 1) });
+    
 });
 
 function getAllCommands() {
@@ -102,4 +106,18 @@ function getAllCommands() {
 
 socket.on('allCommands', function (data) {
     console.log(data);
+});
+
+socket.on('getToken', function(data) {
+    let tokenFetch = fetch(`/api/user/socketiotoken?sid=${socket.id}`, { method: "GET"})
+    .then(
+        function(response) {
+            response.json().then(function(data) {
+                console.log(data);
+                token = data;
+                socket.emit('token', data);
+                socket.emit('getGuildDisabledCommands', {  token: token , guild_id: location.href.substring(location.href.lastIndexOf('/') + 1)});
+            });
+        }
+    );
 });

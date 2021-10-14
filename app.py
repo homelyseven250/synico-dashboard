@@ -1,5 +1,7 @@
 #   Copyright (c) 2021 George Keylock
 #   All rights reserved.
+from json.decoder import JSONDecodeError
+import time
 import json
 import os
 
@@ -10,7 +12,7 @@ import requests
 import werkzeug.utils
 import markdownify
 from authlib.integrations.flask_client import OAuth
-from flask import Flask, render_template, redirect, url_for, request, send_from_directory, abort
+from flask import Flask, render_template, redirect, url_for, request, send_from_directory, abort, jsonify
 
 app = Flask(__name__)
 
@@ -118,7 +120,8 @@ def auth():
     user.id = id
     user.username = username
     user.email = email
-    storagePath = os.path.join('data', str(id))  # Where we will store user's data
+    # Where we will store user's data
+    storagePath = os.path.join('data', str(id))
     if os.path.exists(storagePath):  # Is the user data already existing?
         # If so, merge data
         userStorage = json.loads(
@@ -167,7 +170,8 @@ def dashboard():
     ownedGuilds = []
     for guild in guilds:
         if guild['owner'] == True:
-            ownedGuilds.append(guild)  # Filterashlib.sha256() it down to only owned guilds
+            # Filterashlib.sha256() it down to only owned guilds
+            ownedGuilds.append(guild)
     return render_template('dashboard.html', username=user["username"], guilds=ownedGuilds, user=user)
 
 
@@ -175,6 +179,40 @@ def dashboard():
 def logout():
     flask_login.logout_user()  # Logout the user
     return redirect(url_for('index'))
+
+
+@app.route('/api/user/socketiotoken')
+@flask_login.login_required
+def socketioToken():
+    if request.args.get('sid') == None:
+        abort(400)
+    user = json.loads(open(os.path.join(
+        'data', flask_login.current_user.get_id(), 'user.json')).read())
+    token = os.urandom(64).hex()
+    data = {'token': token, 'timestamp': time.time(), 'sid': request.args.get(
+        'sid'), 'user': flask_login.current_user.get_id()}
+    if not 'tokens' in user:
+        user['tokens'] = {}
+
+    user['tokens'][data['token']] = data
+    with open(os.path.join('data', flask_login.current_user.get_id(), 'user.json'), 'w') as outfile:
+        json.dump(user, outfile)
+    try:
+        with open(os.path.join('data', 'tokens.json'), 'r') as tokensFile:
+            try:
+                tokens = json.loads(tokensFile.read())
+            except JSONDecodeError:
+                tokens = {}
+    except FileNotFoundError:
+        pass
+    with open(os.path.join('data', 'tokens.json'), 'w') as tokensFile:
+        if tokens:
+            tokens[request.args.get('sid')] = data
+        else:
+            tokens = {}
+            tokens[request.args.get('sid')] = data
+        json.dump(tokens, tokensFile)
+    return jsonify(token)
 
 
 @app.route('/dashboard/guild/<guild_id>')
@@ -185,7 +223,8 @@ def guild(guild_id):
             user = json.loads(open(os.path.join(
                 'data', flask_login.current_user.get_id(), 'user.json')).read())  # Load user data
             if not os.path.exists(os.path.join('data', guild_id, 'guild.json')):
-                os.makedirs(os.path.join('data', werkzeug.utils.secure_filename(guild_id)))
+                os.makedirs(os.path.join(
+                    'data', werkzeug.utils.secure_filename(guild_id)))
                 guild = open(os.path.join('data', guild_id, 'guild.json'), 'w')
                 guild.write(json.dumps({'guild_id': guild_id}))
                 guild.close()
@@ -195,41 +234,51 @@ def guild(guild_id):
                 user['guilds'].append(guild_id)
                 with open(os.path.join('data', flask_login.current_user.get_id(), 'user.json'), 'w') as outfile:
                     json.dump(user, outfile)
-            commands = json.load(open(os.path.join('staticData', 'commands.json')))
+            commands = json.load(
+                open(os.path.join('staticData', 'commands.json')))
             return render_template('guild.html', guild=guild, user=user, username=user["username"], guild_id=guild_id,
-                                   commands=commands, channels = getChannels(guild_id))
+                                   commands=commands, channels=getChannels(guild_id))
         else:
             return redirect(getInviteURL(guild_id))
     else:
         abort(400)  # If you're curious Acid, see here: https://mzl.la/3FEFpdR
 
 
-@app.route('/dashboard/guild/<guild_id>/enable/<command>')
-@flask_login.login_required
-def enableGuildCommand(guild_id, command):
-    socket.emit('guildEnableCommands', {"guild_id": guild_id, "commands": [command]}, to=botSID)
-
-
-@app.route('/dashboard/guild/<guild_id>/disable/<command>')
-@flask_login.login_required
-def disableGuildCommand(guild_id, command):
-    socket.emit('guildDisableCommands', {"guild_id": guild_id, "commands": [command]}, to=botSID)
-
-
 @socket.on('updateGuildCommands')
 def updateGuildCommands(data):
-    socket.emit('guildEnableCommands', {"guild_id": data['guild_id'], "commands": data['enabled']}, to=botSID)
-    socket.emit('guildDisableCommands', {"guild_id": data['guild_id'], "commands": data['disabled']}, to=botSID)
+    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
+    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800:
+        user = json.loads(open(os.path.join(
+            'data', token['user'], 'user.json')).read())
+        if data['guild_id'] in user['guilds']:
+            socket.emit('guildEnableCommands', {
+                        "guild_id": data['guild_id'], "commands": data['enabled']}, to=botSID)
+            socket.emit('guildDisableCommands', {
+                        "guild_id": data['guild_id'], "commands": data['disabled']}, to=botSID)
 
 
 @socket.on('getGuildDisabledCommands')
 def guildDisabledCommands(data):
-    socket.emit('getGuildDisabledCommands', {"sid": request.sid, "guild_id": data['guild_id']}, to=botSID)
+    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
+    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800:
+        user = json.loads(open(os.path.join(
+            'data', token['user'], 'user.json')).read())
+        if data['guild_id'] in user['guilds']:
+            socket.emit('getGuildDisabledCommands', {
+                        "sid": request.sid, "guild_id": data['guild_id']}, to=botSID)
 
 
 @socket.on('sendGuildDisabledCommands')
 def sendGuildDisabledCommands(data):
-    socket.emit('sendGuildDisabledCommands', data, to=data['sid'])
+    if request.sid == botSID:
+        socket.emit('sendGuildDisabledCommands', data, to=data['sid'])
+
+# @socket.on('token')
+# def token(data):
+#     token = json.loads(open(os.path.join('data', 'tokens.json')))[request.sid]
+#     user = json.loads(open(os.path.join(
+#         'data', token['user'], 'user.json')).read())
+#     if user['tokens'][data]['sid'] == request.sid:
 
 
 # Test code
@@ -291,7 +340,8 @@ def admin():
         return render_template('admin.html', user=user, username=user['username'], allGuildsLength=len(getBotGuilds()),
                                commands=commands)  # If so, render and return the admin page
     else:
-        return redirect(url_for('dashboard'))  # Redirect to the normal dashboard if not
+        # Redirect to the normal dashboard if not
+        return redirect(url_for('dashboard'))
 
 
 # Requested after a succeddful invite
@@ -303,9 +353,11 @@ def invite_callback():
     else:
         abort(400)
 
+
 @app.route('/api/assets/bot/<assetID>')
 def botAssets(assetID):
     return send_from_directory('botAssets', werkzeug.utils.secure_filename(assetID))
+
 
 @app.route('/api/dashboard/embed', methods=["POST"])
 @flask_login.login_required
@@ -314,34 +366,39 @@ def embed():
         'data', flask_login.current_user.get_id(), 'user.json')).read())
     data = json.loads(request.form['data'])
     if data['guildID'] in user['guilds']:
-            if 'thumbnail' in request.files and request.files['thumbnail'].filename != '':
-                print("Thumbnail true")
-                thumbnail = request.files['thumbnail']
-                thumbnailID = os.urandom(32).hex() + '.' + thumbnail.filename.rsplit('.', 1)[1].lower()
-                thumbnailPath = os.path.join('botAssets', thumbnailID)
-                thumbnail.save(thumbnailPath)
-                data['thumbnail'] = url_for('botAssets', assetID=thumbnailID, _external=True)
-            if 'image' in request.files and request.files['image'].filename != '':
-                print("Image true")
-                image = request.files['image']
-                imageID = os.urandom(32).hex() + '.' + image.filename.rsplit('.', 1)[1].lower()
-                imagePath = os.path.join('botAssets', imageID)
-                image.save(imagePath)
-                data['image'] = url_for('botAssets', assetID=imageID, _external=True)
-            if 'authorIcon' in request.files and request.files['authorIcon'].filename != '':
-                print("Author icon true")
-                authorIcon = request.files['authorIcon']
-                authorIconID = os.urandom(32).hex() + '.' + authorIcon.filename.rsplit('.', 1)[1].lower()
-                authorIconPath = os.path.join('botAssets', authorIconID)
-                authorIcon.save(authorIconPath)
-                data['authorIcon'] = url_for('botAssets', assetID=authorIconID, _external=True)
-            data['message-text'] = markdownify.markdownify(data['message-text'])
-            socket.emit('embed', data, to=botSID)
-            return "200"
+        if 'thumbnail' in request.files and request.files['thumbnail'].filename != '':
+            print("Thumbnail true")
+            thumbnail = request.files['thumbnail']
+            thumbnailID = os.urandom(32).hex() + '.' + \
+                thumbnail.filename.rsplit('.', 1)[1].lower()
+            thumbnailPath = os.path.join('botAssets', thumbnailID)
+            thumbnail.save(thumbnailPath)
+            data['thumbnail'] = url_for(
+                'botAssets', assetID=thumbnailID, _external=True)
+        if 'image' in request.files and request.files['image'].filename != '':
+            print("Image true")
+            image = request.files['image']
+            imageID = os.urandom(32).hex() + '.' + \
+                image.filename.rsplit('.', 1)[1].lower()
+            imagePath = os.path.join('botAssets', imageID)
+            image.save(imagePath)
+            data['image'] = url_for(
+                'botAssets', assetID=imageID, _external=True)
+        if 'authorIcon' in request.files and request.files['authorIcon'].filename != '':
+            print("Author icon true")
+            authorIcon = request.files['authorIcon']
+            authorIconID = os.urandom(
+                32).hex() + '.' + authorIcon.filename.rsplit('.', 1)[1].lower()
+            authorIconPath = os.path.join('botAssets', authorIconID)
+            authorIcon.save(authorIconPath)
+            data['authorIcon'] = url_for(
+                'botAssets', assetID=authorIconID, _external=True)
+        data['message-text'] = markdownify.markdownify(data['message-text'])
+        socket.emit('embed', data, to=botSID)
+        return "200"
     else:
         abort(403)
 
-    
 
 # Ping!
 @socket.on('ping')
@@ -355,8 +412,6 @@ def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'), 'logo.png', mimetype='image/png')
 
 
-
-
 @socket.on('connect')
 def connection(data):
     global botSID
@@ -367,6 +422,8 @@ def connection(data):
             print("Bot presented incorrect auth key - rejecting")
             print(data['key'])
             return False  # Kick that nasty un-authed thingy off - yuck! LOL
+    else:
+        socket.emit('getToken')
 
 
 @socket.on('pingBot')
@@ -379,34 +436,47 @@ def pingBot():
 
 @socket.on('pong')  # When we get a pong
 def pong():
-    socket.emit('botStatus', {"status": "OK"}, broadcast=True)  # Send all socketio clients the bot's status
+    # Send all socketio clients the bot's status
+    socket.emit('botStatus', {"status": "OK"}, broadcast=True)
 
 
 @socket.on('settingsChange')  # Setting changes from the web browser
 def settingsChange(data):
-    socket.emit('settingsChange', data, to=botSID)  # Send them on directly to the bot
+    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
+    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800:
+        user = json.loads(open(os.path.join(
+            'data', flask_login.current_user.get_id(), 'user.json')).read())
+        if data['guilds_id'] in user['guilds']:
+            # Send them on directly to the bot
+            socket.emit('settingsChange', data, to=botSID)
 
 
 @socket.on('getAllCommands')
-def getAllCommands():
-    socket.emit('getAllCommands', {"sid": request.sid},
-                to=botSID)  # Send a request for all commands to the bot, sending the requester's SID for the callback
+def getAllCommands(data):
+        socket.emit('getAllCommands', {"sid": request.sid},
+                    to=botSID)  # Send a request for all commands to the bot, sending the requester's SID for the callback
 
 
 @socket.on('getDisabledCommands')
-def getAllCommands():
-    socket.emit('getDisabledCommands', {"sid": request.sid},
-                to=botSID)  # Send a request for all disabled commands to the bot, sending the requester's SID for the callback
+def getAllCommands(data):
+    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
+    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800 and json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())['admin']:
+        socket.emit('getDisabledCommands', {"sid": request.sid},
+                    to=botSID)  # Send a request for all disabled commands to the bot, sending the requester's SID for the callback
 
 
 @socket.on('disabledCommands')
 def disabledCommands(data):
-    socket.emit('disabledCommands', data, to=data['sid'])  # When we get the data back, send it to the requester's SID
+    # When we get the data back, send it to the requester's SID
+    socket.emit('disabledCommands', data, to=data['sid'])
 
 
 @socket.on('enableCommand')
 def enableCommand(data):
-    socket.emit('enableCommand', data, to=botSID)  # Requests a command to be enabled
+    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
+    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800 and json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())['admin']:
+        # Requests a command to be enabled
+        socket.emit('enableCommand', data, to=botSID)
 
 
 @socket.on('allCommands')  # When we receive the list of all the commands
@@ -414,11 +484,16 @@ def allCommands(data):
     commands = {}
     for entry in data['commands']:
         if not entry['cog'] in commands:  # If we don't have the cog in the dict
-            commands[entry['cog']] = []  # Make a new dict key with an empty list for that cog
-        commands[entry['cog']].append(entry)  # Add the command to its respective cog
-    del commands[None]  # Delete commands with no cog - this includes some sort of default help command
-    json.dump(commands, open(os.path.join('staticData', 'commands.json'), 'w'))  # Save to a file
-    socket.emit('allCommands', data['commands'], to=data["sid"])  # Emit them (currently unused)
+            # Make a new dict key with an empty list for that cog
+            commands[entry['cog']] = []
+        # Add the command to its respective cog
+        commands[entry['cog']].append(entry)
+    # Delete commands with no cog - this includes some sort of default help command
+    del commands[None]
+    # Save to a file
+    json.dump(commands, open(os.path.join('staticData', 'commands.json'), 'w'))
+    # Emit them (currently unused)
+    socket.emit('allCommands', data['commands'], to=data["sid"])
 
 
 # @socket.on('getWarnings')
@@ -427,9 +502,11 @@ def allCommands(data):
 
 @socket.on('updateCommands')
 def updateCommands(data):
-    socket.emit('updateCommands', data, to=botSID)
+    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
+    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800 and json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())['admin']:
+        socket.emit('updateCommands', data, to=botSID)
 
 
 if __name__ == '__main__':
-    socket.run(app, host='0.0.0.0', port=443, keyfile="/etc/letsencrypt/live/gkworkstation.uksouth.cloudapp.azure.com/privkey.pem", certfile="/etc/letsencrypt/live/gkworkstation.uksouth.cloudapp.azure.com/fullchain.pem") # Run it if not using flask debugger
-
+    # Run it if not using flask debugger
+    socket.run(app, host='0.0.0.0', port=app.config['PORT'])

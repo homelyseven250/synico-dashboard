@@ -4,6 +4,7 @@
  */
 
 var gotPing;
+var token;
 const socket = io({transports: ["websocket"]})
 function pingBot() {
     if (gotPing != true) {
@@ -40,11 +41,11 @@ setInterval(pingBot, 1000);
 window.addEventListener('DOMContentLoaded', function () {
     var triggerCommandSyncBtn = document.getElementById('triggerCommandSync');
     triggerCommandSyncBtn.addEventListener('click', e => {
-        socket.emit('getAllCommands');
+        socket.emit('getAllCommands',{ token: token});
     });
     var disabledCommandSyncBtn = document.getElementById('disabledCommandSync');
     disabledCommandSyncBtn.addEventListener('click', e => {
-        socket.emit('getDisabledCommands');
+        socket.emit('getDisabledCommands' , {token: token});
     });
     var saveSettingsBtn = document.getElementById('saveSettingsBtn');
     saveSettingsBtn.addEventListener('click', e => {
@@ -61,7 +62,21 @@ window.addEventListener('DOMContentLoaded', function () {
         });
         console.log(enabled);
         console.log(disabled);
-        socket.emit('updateCommands', {enabled: enabled, disabled: disabled})
+        socket.emit('updateCommands', {enabled: enabled, disabled: disabled,  token: token})
     });
     socket.emit('getDisabledCommands');
+});
+
+socket.on('getToken', function(data) {
+    let tokenFetch = fetch(`/api/user/socketiotoken?sid=${socket.id}`, { method: "GET"})
+    .then(
+        function(response) {
+            response.json().then(function(data) {
+                console.log(data);
+                token = data;
+                socket.emit('token', data);
+                socket.emit('getGuildDisabledCommands', {  token: token , guild_id: location.href.substring(location.href.lastIndexOf('/') + 1)});
+            });
+        }
+    );
 });
