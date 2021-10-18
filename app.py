@@ -170,7 +170,6 @@ def dashboard():
     ownedGuilds = []
     for guild in guilds:
         if guild['owner'] == True:
-            # Filterashlib.sha256() it down to only owned guilds
             ownedGuilds.append(guild)
     return render_template('dashboard.html', username=user["username"], guilds=ownedGuilds, user=user)
 
@@ -446,7 +445,7 @@ def settingsChange(data):
     if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800:
         user = json.loads(open(os.path.join(
             'data', flask_login.current_user.get_id(), 'user.json')).read())
-        if data['guilds_id'] in user['guilds']:
+        if data['guild_id'] in user['guilds']:
             # Send them on directly to the bot
             socket.emit('settingsChange', data, to=botSID)
 
@@ -509,4 +508,4 @@ def updateCommands(data):
 
 if __name__ == '__main__':
     # Run it if not using flask debugger
-    socket.run(app, host='0.0.0.0', port=app.config['PORT'])
+    socket.run(app, host='0.0.0.0', port=app.config['PORT'], keyfile="/etc/letsencrypt/live/gkworkstation.uksouth.cloudapp.azure.com/privkey.pem", certfile="/etc/letsencrypt/live/gkworkstation.uksouth.cloudapp.azure.com/fullchain.pem") # Run it if not using flask debugger)
