@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function (e) {
         });
         console.log(enabled);
         console.log(disabled);
-        socket.emit('updateGuildCommands', { guild_id: location.href.substring(location.href.lastIndexOf('/') + 1), enabled: enabled, disabled: disabled , token: token})
+        socket.emit('updateGuildCommands', { guild_id: location.href.substring(location.href.lastIndexOf('/') + 1), enabled: enabled, disabled: disabled, token: token})
     });
     socket.on('sendGuildDisabledCommands', data => {
         data.disabledCommands.forEach(element => {

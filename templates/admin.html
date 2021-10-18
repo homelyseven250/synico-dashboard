@@ -67,12 +67,26 @@
                 </p>
             </div>
         </div>
-        <div class="card" style="width: 18rem;">
+        <div class="card">
+            <div class="card-header">
+                All guilds
+            </div>
             <div class="card-body">
-                <button class="btn btn-primary" id="triggerCommandSync">Trigger Command Sync</button>
-                <button class="btn btn-primary" id="disabledCommandSync">TEST COMMAND - Sync disabled commands</button>
+                {% for guild in guilds %}
+                <a href="/dashboard/admin/guild/{{ guild['id'] }}">{{ guild['name'] }}</a> <br>
+                {%endfor%}
             </div>
         </div>
+
+        {% if user['owner'] == True %}
+        <div class="card">
+            <div class="card-body">
+                <button class="btn btn-primary" id="triggerCommandSync">Trigger Command Sync</button>
+                <br>
+                <span class="text-danger">Do not use this if you do not know what it does!</span>
+            </div>
+        </div>
+        
         <h3>Global Command Controls</h3>
         {% for cog in commands %}
         <div class="card">
@@ -103,6 +117,7 @@
             </div>
         </div>
     </div>
+    {%endif%}
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"

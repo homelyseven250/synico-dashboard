@@ -335,13 +335,13 @@ def sendGuildDisabledCommands(data):
 def admin():
     user = json.loads(open(os.path.join(
         'data', flask_login.current_user.get_id(), 'user.json')).read())  # Load user data
-    if user['admin'] == True:  # Is the user an admin?
-        commands = json.load(open(os.path.join('staticData', 'commands.json')))
-        return render_template('admin.html', user=user, username=user['username'], allGuildsLength=len(getBotGuilds()),
-                               commands=commands)  # If so, render and return the admin page
+    if user['staff'] == True:  # Is the user staff?
+        guilds = getBotGuilds()
+        return render_template('admin.html', user=user, username=user['username'], guilds=guilds, allGuildsLength=len(guilds),
+                               commands=json.load(open(os.path.join('staticData', 'commands.json'))))  # If so, render and return the admin page
     else:
-        # Redirect to the normal dashboard if not
-        return redirect(url_for('dashboard'))
+        # Use 404, so it suggests to the end user that there is nothing here.
+        abort(404)
 
 
 # Requested after a succeddful invite
@@ -449,12 +449,14 @@ def settingsChange(data):
         if data['guilds_id'] in user['guilds']:
             # Send them on directly to the bot
             socket.emit('settingsChange', data, to=botSID)
+    else:
+        socket.emit('error', {'reason': 'token'})
 
 
 @socket.on('getAllCommands')
 def getAllCommands(data):
-        socket.emit('getAllCommands', {"sid": request.sid},
-                    to=botSID)  # Send a request for all commands to the bot, sending the requester's SID for the callback
+    socket.emit('getAllCommands', {"sid": request.sid},
+                to=botSID)  # Send a request for all commands to the bot, sending the requester's SID for the callback
 
 
 @socket.on('getDisabledCommands')
