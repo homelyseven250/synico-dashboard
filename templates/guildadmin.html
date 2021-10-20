@@ -9,7 +9,8 @@
     <meta name="author" content="Synico">
     <title>Dashboard</title>
     <script src="/static/webpack/46.94d1733539f02f439bd3.bundle.js"></script>
-    <script src="/static/webpack/guild.94d1733539f02f439bd3.bundle.js"></script>
+    <script src="/static/webpack/guildadmin.94d1733539f02f439bd3.bundle.js"></script>
+
 </head>
 
 <body>
@@ -78,9 +79,7 @@
             <div class="card-body" id="settings">
                 <form id="embed-form" action="javascript:void(0);" class="row g-3">
                     <div class="form-group col-auto">
-                        <label for="message-text">Message <a target="_blank" rel="noopener noreferer" class="text-muted"
-                                href="https://support.discord.com/hc/en-us/articles/210298617-Markdown-Text-101-Chat-Formatting-Bold-Italic-Underline-">Markdown
-                                works here!</a></label>
+                        <label for="message-text">Message <a target="_blank" rel="noopener noreferer" class="text-muted" href="https://support.discord.com/hc/en-us/articles/210298617-Markdown-Text-101-Chat-Formatting-Bold-Italic-Underline-">Markdown works here!</a></label>
                         <!-- <input type="text" class="form-control" id="message-text" placeholder="Enter your message here"> -->
                         <div class="form-control" id="message-text" contenteditable></div>
                         <label for="message-author">Author</label>
@@ -90,18 +89,17 @@
                         <input type="url" class="form-control" id="message-author-url" placeholder="Enter author URL">
 
                         <label for="message-author-icon">Author Icon</label>
-                        <input type="file" class="form-control" id="message-author-icon"
-                            accept="image/png, image/jpeg, image/gif">
+                        <input type="file" class="form-control" id="message-author-icon" accept="image/png, image/jpeg, image/gif">
 
                         <label for="message-thumbnail">Select a thumbnail</label>
-                        <input type="file" class="form-control" id="message-thumbnail"
-                            accept="image/png, image/jpeg, image/gif">
+                        <input type="file" class="form-control" id="message-thumbnail" accept="image/png, image/jpeg, image/gif">
 
                         <label for="message-image">Select a image</label>
-                        <input type="file" class="form-control" id="message-image"
-                            accept="image/png, image/jpeg, image/gif">
+                        <input type="file" class="form-control" id="message-image" accept="image/png, image/jpeg, image/gif">
 
-                        <label for="embed-channel">Choose a channel</label>
+                        <label for="embed-channel">Choose a channel:</label>
+                        <input class="form-control" type="color" id="message-color" value="#202225">
+
                         <select name="embed-channel" id="embed-channel" class="form-control">
                             {% for channel in channels%}
                             {% if channel['type'] == 0%}
@@ -109,10 +107,6 @@
                             {%endif%}
                             {%endfor%}
                         </select>
-                        <label for="message-color">Select a colour</label>
-                        <input class="form-control" type="color" id="message-color" value="#202225">
-
-                        
                         <input type="submit" class="btn btn-primary" id="embed-submit">
                     </div>
                 </form>
@@ -132,10 +126,7 @@
                             <input class="form-check-input checkbox-command" type="checkbox" checked
                                 value="{{command['name']}}" id="{{command['name']}}">
                             <label class="form-check-label" for="{{command['name']}}">
-                                {{command['name']}}
-                                {% if command['help'] != None %}
-                                <span class="text-muted"> - {{command['help']}}</span>
-                                {%endif%}
+                                {{command['name']}} - <span class="text-muted">{{command['help']}}</span>
                             </label>
                         </div>
                         {% endfor %}
@@ -149,7 +140,11 @@
                 <button class="btn btn-danger" id="saveSettingsBtn">Save Settings</button>
             </div>
         </div>
-    </div>
+        <div class="card">
+            <div class="card-body">
+                Download raw server data from discord API <a id="rawServerBtn" class="link-primary">here</a>
+            </div>
+        </div>
     </div>
 </body>
 

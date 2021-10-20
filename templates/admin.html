@@ -5,18 +5,11 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="">
-    <meta name="author" content="">
+    <meta name="description" content="The Synico Dashboard">
+    <meta name="author" content="Synico">
     <title>Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-F3w7mX95PdgyTmZZMECAngseQB83DfGTowi0iMjiWaeVhAn4FJkqJByhZMI3AhiU" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/js/fontawesome.min.js"
-        integrity="sha256-1lGQuZh8a4EiccMxEc18J0h4nhr5oCmXEXPzca+Lbrk=" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.2.0/dist/socket.io.min.js"
-        integrity="sha256-Kz7CzdTU8TMyn59YIxWrJzMGuaaOBxi6iLs2oPuHm94=" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css"
-        integrity="sha256-mUZM63G8m73Mcidfrv5E+Y61y7a12O5mW4ezU3bxqW4=" crossorigin="anonymous">
-    <script src="/static/admin.js"></script>
+    <script src="/static/webpack/46.94d1733539f02f439bd3.bundle.js"></script>
+    <script src="/static/webpack/admin.94d1733539f02f439bd3.bundle.js"></script>
 
 
 </head>
@@ -71,7 +64,7 @@
             <div class="card-header">
                 All guilds
             </div>
-            <div class="card-body">
+            <div class="card-body overflow-auto">
                 {% for guild in guilds %}
                 <a href="/dashboard/admin/guild/{{ guild['id'] }}">{{ guild['name'] }}</a> <br>
                 {%endfor%}
@@ -119,10 +112,7 @@
     </div>
     {%endif%}
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.1/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-/bQdsTh/da6pkI1MST/rWKFNjaCP5gBSY4sEBT38Q/9RBh9AH40zEOg7Hlq2THRZ"
-        crossorigin="anonymous"></script>
+    
 </body>
 
 </html>

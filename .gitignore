@@ -4,3 +4,5 @@ venv/
 /config.py
 botAssets/
 app.py.custom
+static/webpack
+*.js

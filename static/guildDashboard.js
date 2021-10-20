@@ -50,6 +50,8 @@ document.addEventListener('DOMContentLoaded', function (e) {
                 embedData[element.id] = element.selectedOptions[0].id;
             } else if (element.type == "color") {
                 embedData[element.id] = element.value;
+            } else if (element.getAttribute('type') == 'url') {
+                embedData[element.id] = element.value;
             }
         }
         embedData['message-text'] = document.getElementById('message-text').innerHTML;

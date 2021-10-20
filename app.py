@@ -13,7 +13,7 @@ import werkzeug.utils
 import markdownify
 from authlib.integrations.flask_client import OAuth
 from flask import Flask, render_template, redirect, url_for, request, send_from_directory, abort, jsonify
-
+from flask_compress import Compress
 app = Flask(__name__)
 
 # Import the config file
@@ -24,12 +24,13 @@ oauth = OAuth(app)
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 socket = flask_socketio.SocketIO(app, ping_timeout=60)
+Compress(app)
 botSID = None
-
+tokens = {}
 
 @login_manager.user_loader
 def load_user(user_id):
-    # This is very simple - I copied and pasted it from some other code of mine.
+    # This is very simple - I copied and pasted it from some other code of mine and I can't remember what it does but it works.
     user = User()
     user.id = user_id
     return user
@@ -50,7 +51,13 @@ discord = oauth.register(
 )
 
 
+@login_manager.unauthorized_handler
+def unauthorized():
+    return discord.authorize_redirect(url_for('auth',  _external=True))
+
 # Use the default flask_login user mixin.
+
+
 class User(flask_login.UserMixin):
     pass
 
@@ -69,7 +76,17 @@ def checkGuild(id):
     return False
 
 
+def getGuild(id):
+    client = requests.session()
+    client.headers.update(
+        {'Authorization': 'Bot ' + app.config['DISCORD_BOT_TOKEN']})
+    guild = json.loads(client.get(
+        app.config['DISCORD_API_BASE_URL'] + f'guilds/{id}').text)
+    return guild
+
 # Get a list of all guilds the bot is in.
+
+
 def getBotGuilds():
     client = requests.session()
     client.headers.update(
@@ -102,7 +119,7 @@ def getChannel(channel_id):
 # Redirect to discord login
 @app.route('/login/discord')
 def login():
-    return discord.authorize_redirect(url_for('auth', _external=True))
+    return discord.authorize_redirect(url_for('auth',  _external=True))
 
 
 @app.route('/auth/discord')
@@ -196,21 +213,7 @@ def socketioToken():
     user['tokens'][data['token']] = data
     with open(os.path.join('data', flask_login.current_user.get_id(), 'user.json'), 'w') as outfile:
         json.dump(user, outfile)
-    try:
-        with open(os.path.join('data', 'tokens.json'), 'r') as tokensFile:
-            try:
-                tokens = json.loads(tokensFile.read())
-            except JSONDecodeError:
-                tokens = {}
-    except FileNotFoundError:
-        pass
-    with open(os.path.join('data', 'tokens.json'), 'w') as tokensFile:
-        if tokens:
-            tokens[request.args.get('sid')] = data
-        else:
-            tokens = {}
-            tokens[request.args.get('sid')] = data
-        json.dump(tokens, tokensFile)
+    tokens[request.args.get('sid')] = data
     return jsonify(token)
 
 
@@ -243,9 +246,37 @@ def guild(guild_id):
         abort(400)  # If you're curious Acid, see here: https://mzl.la/3FEFpdR
 
 
+@app.route('/dashboard/admin/guild/<guild_id>')
+@flask_login.login_required
+def guildAdmin(guild_id):
+    user = json.loads(open(os.path.join(
+        'data', flask_login.current_user.get_id(), 'user.json')).read())  # Load user data
+    if user['staff'] == True:
+        if guild_id.isdecimal():  # Is the ID a number?
+            if checkGuild(guild_id):  # Is the bot in the guild?
+                return render_template('guildadmin.html', guild=getGuild(guild_id), user=user, username=user["username"], guild_id=guild_id,
+                                       commands=json.load(
+                    open(os.path.join('staticData', 'commands.json'))), channels=getChannels(guild_id))
+            else:
+                return redirect(getInviteURL(guild_id))
+        else:
+            abort(400)  # If you're curious Acid, see here: https://mzl.la/3FEFpdR
+
+
+@socket.on('rawServer')
+def rawServer(data):
+    token = tokens[request.sid]
+    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800:
+        user = json.loads(open(os.path.join(
+            'data', token['user'], 'user.json')).read())
+        if user['staff'] == True:
+            socket.emit('rawServerData', {
+                'rawData': getGuild(data['id'])
+            })
+
 @socket.on('updateGuildCommands')
 def updateGuildCommands(data):
-    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
+    token = tokens[request.sid]
     if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800:
         user = json.loads(open(os.path.join(
             'data', token['user'], 'user.json')).read())
@@ -258,7 +289,7 @@ def updateGuildCommands(data):
 
 @socket.on('getGuildDisabledCommands')
 def guildDisabledCommands(data):
-    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
+    token = tokens[request.sid]
     if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800:
         user = json.loads(open(os.path.join(
             'data', token['user'], 'user.json')).read())
@@ -408,7 +439,7 @@ def pingSocket():
 # Send the favicon (the logo)
 @app.route('/favicon.ico')
 def favicon():
-    return send_from_directory(os.path.join(app.root_path, 'static'), 'logo.png', mimetype='image/png')
+    return send_from_directory(os.path.join(app.root_path, 'static'), 'favicon.png', mimetype='image/png')
 
 
 @socket.on('connect')
@@ -441,7 +472,7 @@ def pong():
 
 @socket.on('settingsChange')  # Setting changes from the web browser
 def settingsChange(data):
-    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
+    token = tokens[request.sid]
     if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800:
         user = json.loads(open(os.path.join(
             'data', flask_login.current_user.get_id(), 'user.json')).read())
@@ -459,9 +490,10 @@ def getAllCommands(data):
 
 
 @socket.on('getDisabledCommands')
-def getAllCommands(data):
-    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
-    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800 and json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())['admin']:
+def getDisabledCommands(data):
+    global tokens
+    token = tokens[request.sid]
+    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800 and json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())['owner']:
         socket.emit('getDisabledCommands', {"sid": request.sid},
                     to=botSID)  # Send a request for all disabled commands to the bot, sending the requester's SID for the callback
 
@@ -474,8 +506,8 @@ def disabledCommands(data):
 
 @socket.on('enableCommand')
 def enableCommand(data):
-    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
-    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800 and json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())['admin']:
+    token = tokens[request.sid]
+    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800 and json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())['owner']:
         # Requests a command to be enabled
         socket.emit('enableCommand', data, to=botSID)
 
@@ -503,11 +535,12 @@ def allCommands(data):
 
 @socket.on('updateCommands')
 def updateCommands(data):
-    token = json.load(open(os.path.join('data', 'tokens.json')))[request.sid]
-    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800 and json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())['admin']:
+    token = tokens[request.sid]
+    if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800 and json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())['owner']:
         socket.emit('updateCommands', data, to=botSID)
 
 
 if __name__ == '__main__':
     # Run it if not using flask debugger
-    socket.run(app, host='0.0.0.0', port=app.config['PORT'], keyfile="/etc/letsencrypt/live/gkworkstation.uksouth.cloudapp.azure.com/privkey.pem", certfile="/etc/letsencrypt/live/gkworkstation.uksouth.cloudapp.azure.com/fullchain.pem") # Run it if not using flask debugger)
+    socket.run(app, host='0.0.0.0', port=app.config['PORT'], keyfile="/etc/letsencrypt/live/gkworkstation.uksouth.cloudapp.azure.com/privkey.pem",
+               certfile="/etc/letsencrypt/live/gkworkstation.uksouth.cloudapp.azure.com/fullchain.pem")  # Run it if not using flask debugger)
