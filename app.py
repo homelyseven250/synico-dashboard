@@ -1,20 +1,21 @@
 #   Copyright (c) 2021 George Keylock
 #   All rights reserved.
-from json.decoder import JSONDecodeError
 import time
 import json
 import os
-
+import hashlib
 import flask_login
 import flask_socketio
 # import gunicorn
 import requests
 import werkzeug.utils
+import werkzeug.datastructures
 import markdownify
 from authlib.integrations.flask_client import OAuth
 from flask import Flask, render_template, redirect, url_for, request, send_from_directory, abort, jsonify
 from flask_compress import Compress
 app = Flask(__name__)
+import psycopg
 
 # Import the config file
 app.config.from_pyfile('config.py')
@@ -27,6 +28,8 @@ socket = flask_socketio.SocketIO(app, ping_timeout=60)
 Compress(app)
 botSID = None
 tokens = {}
+DBConn = psycopg.connect(f'dbname=george  user={app.config["DB_USER"]} password={app.config["DB_PASS"]} host={app.config["DB_HOST"]}')
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -62,7 +65,18 @@ class User(flask_login.UserMixin):
     pass
 
 
+def hashFile(file: werkzeug.datastructures.FileStorage):
+    sha1 = hashlib.sha1()
+    while True:
+        data = file.read(65536)
+        if not data:
+            break
+        sha1.update(data)
+    return(sha1.hexdigest())
+
 # Get an invite url for the guild id. This will probably be altered for production.
+
+
 def getInviteURL(guild_id):
     return f'https://discord.com/oauth2/authorize?client_id={app.config["DISCORD_BOT_ID"]}&scope=bot%20applications.commands&permissions=8&guild_id={guild_id}&disable_guild_select=true&response_type=code&redirect_uri={url_for("invite_callback", _external=True)}'
 
@@ -186,7 +200,7 @@ def dashboard():
         app.config['DISCORD_API_BASE_URL'] + 'users/@me/guilds').text)  # Get all guilds the user is a member of
     ownedGuilds = []
     for guild in guilds:
-        if guild['owner'] == True:
+        if int(guild['permissions_new']) & 0x0000000020:
             ownedGuilds.append(guild)
     return render_template('dashboard.html', username=user["username"], guilds=ownedGuilds, user=user)
 
@@ -273,6 +287,7 @@ def rawServer(data):
             socket.emit('rawServerData', {
                 'rawData': getGuild(data['id'])
             })
+
 
 @socket.on('updateGuildCommands')
 def updateGuildCommands(data):
@@ -399,28 +414,34 @@ def embed():
         if 'thumbnail' in request.files and request.files['thumbnail'].filename != '':
             print("Thumbnail true")
             thumbnail = request.files['thumbnail']
-            thumbnailID = os.urandom(32).hex() + '.' + \
+            thumbnailID = hashFile(thumbnail) + '.' + \
                 thumbnail.filename.rsplit('.', 1)[1].lower()
-            thumbnailPath = os.path.join('botAssets', thumbnailID)
-            thumbnail.save(thumbnailPath)
+            imagePath = os.path.join(os.getcwd(), 'botAssets', thumbnailID)
+            if not os.path.exists(imagePath):
+                thumbnail.stream.seek(0)
+                thumbnail.save(imagePath)
             data['thumbnail'] = url_for(
                 'botAssets', assetID=thumbnailID, _external=True)
         if 'image' in request.files and request.files['image'].filename != '':
             print("Image true")
             image = request.files['image']
-            imageID = os.urandom(32).hex() + '.' + \
+            imageID = hashFile(image) + '.' + \
                 image.filename.rsplit('.', 1)[1].lower()
-            imagePath = os.path.join('botAssets', imageID)
-            image.save(imagePath)
+            imagePath = os.path.join(os.getcwd(), 'botAssets', imageID)
+            if not os.path.exists(imagePath):
+                image.stream.seek(0)
+                image.save(imagePath)
             data['image'] = url_for(
                 'botAssets', assetID=imageID, _external=True)
         if 'authorIcon' in request.files and request.files['authorIcon'].filename != '':
             print("Author icon true")
             authorIcon = request.files['authorIcon']
-            authorIconID = os.urandom(
-                32).hex() + '.' + authorIcon.filename.rsplit('.', 1)[1].lower()
+            authorIconID = hashFile(authorIcon) + '.' + \
+                authorIcon.filename.rsplit('.', 1)[1].lower()
             authorIconPath = os.path.join('botAssets', authorIconID)
-            authorIcon.save(authorIconPath)
+            if not os.path.exists(authorIconPath):
+                authorIcon.stream.seek(0)
+                authorIcon.save(authorIconPath)
             data['authorIcon'] = url_for(
                 'botAssets', assetID=authorIconID, _external=True)
         data['message-text'] = markdownify.markdownify(data['message-text'])
@@ -538,6 +559,21 @@ def updateCommands(data):
     token = tokens[request.sid]
     if data['token'] == token['token'] and token['timestamp'] - time.time() < 172800 and json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())['owner']:
         socket.emit('updateCommands', data, to=botSID)
+
+@app.route('/api/guild/<guild_id>/ticket/message', methods=['POST'])
+@flask_login.login_required
+def ticketMessage(guild_id):
+    global DBConn
+    user = json.loads(open(os.path.join('data', flask_login.current_user.get_id(), 'user.json')).read())
+    if guild_id in user['guilds']:
+            data = request.get_json()
+            if 'message' in data:
+                DBConn.execute("INSERT INTO ticket_messages (guild, message, author) VALUES (%s, %s, %s) ON CONFLICT (guild) DO UPDATE SET message=$2, author=$3", (guild_id, data['message'], data["author"]))
+                DBConn.commit()
+                return "200"
+            else:
+                abort(400)
+
 
 
 if __name__ == '__main__':

@@ -8,14 +8,15 @@
     <meta name="description" content="The Synico Dashboard">
     <meta name="author" content="Synico">
     <title>Dashboard</title>
-    <script src="/static/webpack/46.94d1733539f02f439bd3.bundle.js"></script>
-    <script src="/static/webpack/guild.94d1733539f02f439bd3.bundle.js"></script>
+    <script src="/static/webpack/962.bundle.js"></script>
+    <script src="/static/webpack/401.bundle.js"></script>
+    <script src="/static/webpack/guild.bundle.js"></script>
 </head>
 
 <body>
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">Synico Dashboard</a>
+            <a href="/"><img class="navbar-brand" src="/static/logo.png" width="50" height="50" alt=""></a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
                 data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
                 aria-label="Toggle navigation">
@@ -112,8 +113,28 @@
                         <label for="message-color">Select a colour</label>
                         <input class="form-control" type="color" id="message-color" value="#202225">
 
-                        
+
                         <input type="submit" class="btn btn-primary" id="embed-submit">
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4>Ticket Settings</h4>
+            </div>
+            <div class="card-body" id="settings">
+                <form id="embed-form" action="javascript:void(0);" class="row g-3">
+                    <div class="form-group col-auto">
+                        <label for="message-text">Message <a target="_blank" rel="noopener noreferer" class="text-muted"
+                                href="https://support.discord.com/hc/en-us/articles/210298617-Markdown-Text-101-Chat-Formatting-Bold-Italic-Underline-">Markdown
+                                works here!</a></label>
+                        <div class="form-control" id="message-text" contenteditable></div>
+                        <label for="message-author">Author</label>
+                        <input type="text" class="form-control" id="message-author" placeholder="Enter author">
+
+                        <input type="submit" class="btn btn-primary" id="ticket-submit">
                     </div>
                 </form>
             </div>
